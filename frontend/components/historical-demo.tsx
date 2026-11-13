@@ -7,15 +7,17 @@ import { ArtworkStory } from "./artwork-story";
 import { NetworkMappingCoverage } from "./network-mapping-coverage";
 import { SceneSvg } from "./scene-svg";
 import { RenderControls } from "./render-controls";
+import {TraitList} from "./artwork-traits";
 import { EconomyExample } from "./economy-dashboard";
 import { verifyFamilySelection } from "@/lib/family-selection";
+import {verifyTraitDocument} from "@/lib/nft-traits";
 import type { ArtworkScene as Scene, HistoricalDemoData as Demo } from "./historical-demo-types";
 
 type Asset = {url:string;sha256:string};
 const layers:Record<string,string>={routes:"Cross-chain routes",geometry:"Seeded geometry",particles:"Transaction moments",inheritance:"Genesis inheritance",signature:"Edition signature",surfaces:"Filled surfaces and ribbons",textures:"Procedural texture",lighting:"Light and glow"};
 const utc=(seconds:number)=>new Date(seconds*1000).toUTCString();
 async function verifiedBytes(asset:Asset, signal?:AbortSignal){
-  if(!/^\/historical-demo\/editions\/[a-f0-9]{64}\/(artwork\.png|artwork-manifest\.json)$/.test(asset.url))throw new Error("Invalid demo asset location.");
+  if(!/^\/historical-demo\/editions\/[a-f0-9]{64}\/(artwork\.png|artwork-manifest\.json|nft-traits\.json)$/.test(asset.url))throw new Error("Invalid demo asset location.");
   const response=await fetch(asset.url,{signal,cache:"no-store"});
   if(!response.ok)throw new Error("A saved demo asset is unavailable.");
   const bytes=await response.arrayBuffer();
@@ -40,6 +42,10 @@ export function HistoricalDemo(){
         const value:Demo=await response.json();
         if(value.schema!=="echo-historical-demo-v1"||!value.verification.rerendered_before_publication||!Object.values(value.verification.checks).every(Boolean)||value.files["artwork.png"].sha256!==value.artwork.image_hash)throw new Error("The demo publication is incomplete.");
         const [png,manifest]=await Promise.all([verifiedBytes(value.files["artwork.png"],controller.signal),verifiedBytes(value.files["artwork-manifest.json"],controller.signal)]);
+        if(value.traits){
+          const traitFile=value.files["nft-traits.json"];
+          if(!traitFile||traitFile.sha256!==value.traits.sha256||value.traits.source.image_sha256!==value.artwork.image_hash||value.traits.source.manifest_sha256!==value.files["artwork-manifest.json"].sha256||value.traits.source.provenance_sha256!==value.provenance_sha256||!await verifyTraitDocument(value.traits,await verifiedBytes(traitFile,controller.signal)))throw new Error("The recorded NFT traits could not be verified.");
+        }
         if(controller.signal.aborted)return;
         objectURL=URL.createObjectURL(new Blob([png],{type:"image/png"}));
         const parsed:Scene=JSON.parse(new TextDecoder().decode(manifest));
@@ -64,6 +70,7 @@ export function HistoricalDemo(){
     {demo&&scene&&state==="ready"&&storyComplete&&<><div className="data-warning">Historical release: {demo.sunday} · Captured {utc(demo.captured_at)}. Statuses reflect capture time. No NFT mint or auction was performed.</div>
       <NetworkMappingCoverage demo={demo}/>
       <RenderControls scene={scene} demo={demo}/>
+      {demo.traits&&<TraitList bundle={demo.traits}/>}
       <button className="button subtle story-replay" onClick={()=>{setStoryComplete(false);setStoryKey(value=>value+1);setTab("artwork");}}><RotateCcw size={14}/> Replay the story</button>
       <div className="tabs" role="group" aria-label="Historical artwork view">{["artwork","animated","layers"].map(value=><button key={value} aria-pressed={tab===value} className={tab===value?"active":""} onClick={()=>setTab(value)}>{value==="artwork"?"Static image":value==="animated"?"Animated view":"Explore the layers"}</button>)}</div>
       <div className="dna-layout"><div className="dna-canvas">{tab==="artwork"?<img src={image} alt={demo.artwork.title}/>:tab==="animated"?<AnimatedArtwork scene={scene} seed={demo.artwork.seed} title={demo.artwork.title}/>:<SceneSvg scene={scene} visible={visible}/>}<span className="overline">{tab==="animated"?"ANIMATED INTERPRETATION · SAVED SCENE":tab==="artwork"?"CANONICAL PNG · HASH CHECKED IN YOUR BROWSER":"INTERACTIVE PRESENTATION · ORIGINAL ARTWORK STAYS FIXED"}</span></div>

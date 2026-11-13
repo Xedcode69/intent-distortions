@@ -21,6 +21,7 @@ async def validate_contracts(settings,rpc=None):
     if len(set(treasuries))!=(1 if settings.economy_enabled else 3) or settings.near_minter_account in treasuries or settings.near_auction_contract in treasuries or settings.near_nft_contract in treasuries:
         raise ValueError("Treasury withdrawal authority must be separate")
     if settings.economy_enabled:
+        if nft.get("trait_schema")!="echo-nft-traits-v1":raise ValueError("NFT contract must preserve root-level frozen trait metadata")
         economy=await rpc.view(settings.near_nft_contract,"get_economy",{})
         if economy.get("creator")!=settings.near_creator_account or economy.get("treasury")!=settings.near_treasury_account or auction.get("creator")!=settings.near_creator_account or treasuries!=[settings.near_treasury_account]:
             raise ValueError("Economy creator/treasury binding mismatch")

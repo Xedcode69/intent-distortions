@@ -129,8 +129,9 @@ async def test_full_mocked_replay_caches_capture_verifies_art_and_detects_tamper
     assert published["statistics"]["dominant_routes"]
     assert published["statistics"]["network_mapping"]["source_records_mapped"] == 5
     assert published["artwork"]["image_hash"] == first["artwork"]["image_hash"]
-    assert set(published["files"]) == {"artwork.png", "artwork-manifest.json"}
-    assert len(list(public.rglob("*.*"))) == 3
+    assert set(published["files"]) == {"artwork.png", "artwork-manifest.json", "nft-traits.json"}
+    assert published["files"]["nft-traits.json"]["sha256"]==published["traits"]["sha256"]
+    assert len(list(public.rglob("*.*"))) == 4
     for item in published["files"].values():
         relative = item["url"].removeprefix("/historical-demo/")
         assert sha((public / relative).read_bytes()).hex() == item["sha256"]

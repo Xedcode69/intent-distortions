@@ -165,7 +165,7 @@ impl EchoNFT {
         self.deliveries.get(&token_id).filter(|d| d.confirmed)
     }
     pub fn get_config(&self) -> near_sdk::serde_json::Value {
-        near_sdk::serde_json::json!({"minter":self.minter,"auction_contract":self.auction_contract,"version":if self.economy.is_some(){"echo-nft-3"}else{"echo-nft-2"},"economy":self.economy.is_some()})
+        near_sdk::serde_json::json!({"minter":self.minter,"auction_contract":self.auction_contract,"version":if self.economy.is_some(){"echo-nft-3"}else{"echo-nft-2"},"economy":self.economy.is_some(),"trait_schema":"echo-nft-traits-v1"})
     }
 }
 

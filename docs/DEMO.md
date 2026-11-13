@@ -31,7 +31,7 @@ Set the NEAR AI key/model before generating a **new** replay edition. An existin
 Prerequisites: deployed initialized **dedicated demo** contracts, operator/minter plus two funded bidder accounts in the official CLI keychain, and public immutable image/provenance URLs containing the exact exported bytes. Configure contract names in `.env`. The supplied runner refuses mainnet and checks public URI hashes and existing onchain commitments before minting.
 
 ```text
-uv run --locked python scripts/testnet_lifecycle.py --minter operator.testnet --bidder-a alice.testnet --bidder-b bob.testnet --media-uri ipfs://<image-cid> --provenance-uri ipfs://<provenance-cid> --wait-for-end
+uv run --locked python scripts/testnet_lifecycle.py --minter operator.testnet --bidder-a alice.testnet --bidder-b bob.testnet --media-uri ipfs://<image-cid> --provenance-uri ipfs://<provenance-cid> --traits-uri ipfs://<traits-cid> --wait-for-end
 ```
 
 The runner performs real CLI-signed testnet calls, confirms NFT/auction state, registers bidders, submits two bids when the auction has no existing bid, waits for the effective end, settles, verifies winner ownership, and claims the first bidder's losing escrow. It prints actual CLI receipts and RPC results. It never generates a fabricated receipt hash or automatically retries an uncertain signed call. If interrupted after a bid, inspect onchain state; it preserves existing bids on restart instead of blindly submitting them again.

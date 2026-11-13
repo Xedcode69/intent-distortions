@@ -8,6 +8,7 @@ from .historical_replay import ReplayPlan, _load_capture
 from .provenance import verify_artwork
 from .randomness import round_for, select_timestamp, verify_beacon
 from .storage import ContentStore
+from .nft_traits import trait_bundle
 
 
 def publish_replay(report_path, destination):
@@ -55,6 +56,8 @@ def publish_replay(report_path, destination):
     # provider URLs, original provenance source metadata or environment files.
     files = {name:store.get(provenance["files"][name]["sha256"])
              for name in ("artwork.png", "artwork-manifest.json")}
+    traits=trait_bundle(store,artwork)
+    files["nft-traits.json"]=canonical({key:value for key,value in traits.items() if key!="sha256"})
     summary = {
         "schema":"echo-historical-demo-v1", "mode":"historical_replay",
         "sunday":plan.sunday, "captured_at":source["capture_completed_at"],
@@ -67,6 +70,7 @@ def publish_replay(report_path, destination):
         "snapshot_sha256":source["sha256"], "provenance_sha256":artwork["provenance"]["sha256"],
         "verification":{"checks":verification["checks"], "scope":verification["scope"], "rerendered_before_publication":True},
         "status_policy":plan.public()["status_policy"], "nft_and_auction":"not_run",
+        "traits":traits,
     }
     hashes = {name:sha(data).hex() for name, data in files.items()}
     if "network_mapping" in artwork["stats"]:

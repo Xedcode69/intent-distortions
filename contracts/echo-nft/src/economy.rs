@@ -227,8 +227,74 @@ impl EchoNFT {
         .parse()
         .expect("Invalid edition account");
         let mut metadata = metadata;
-        metadata.extra=Some(near_sdk::serde_json::json!({"schema":"near-echoes-edition-wallet-v1","account_id":account_id,
-            "controller":env::current_account_id(),"release_ns":release_ns,"policy":"dedicated-accounts-calendar-month-v1","original_extra":metadata.extra}).to_string());
+        let original = metadata.extra.take();
+        assert!(
+            original.as_ref().map(|s| s.len() <= 16384).unwrap_or(true),
+            "Extra metadata too large"
+        );
+        let mut extra = original
+            .as_ref()
+            .and_then(|s| near_sdk::serde_json::from_str::<near_sdk::serde_json::Value>(s).ok())
+            .and_then(|v| v.as_object().cloned())
+            .unwrap_or_default();
+        if extra.is_empty() {
+            if let Some(original) = original {
+                extra.insert("original_extra".into(), original.into());
+            }
+        }
+        let mut attrs = extra
+            .remove("attributes")
+            .map(|v| v.as_array().expect("Attributes must be an array").clone())
+            .unwrap_or_default();
+        assert!(attrs.len() <= 61, "Too many NFT attributes");
+        for attr in &attrs {
+            assert!(
+                attr.get("trait_type")
+                    .and_then(|v| v.as_str())
+                    .map(|s| !s.is_empty() && s.len() <= 64)
+                    .unwrap_or(false),
+                "Invalid trait name"
+            );
+            assert!(
+                attr.get("value")
+                    .map(|v| v.is_number() || v.as_str().map(|s| s.len() <= 160).unwrap_or(false))
+                    .unwrap_or(false),
+                "Invalid trait value"
+            );
+        }
+        attrs.retain(|a| {
+            !matches!(
+                a["trait_type"].as_str(),
+                Some("Edition month" | "Edition year" | "Monthly edition")
+            )
+        });
+        let (year, month, _) = calendar::civil(release_ns.0 / calendar::DAY);
+        let months = [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        ];
+        let monthly: u64 = calendar::label(release_ns.0)
+            .rsplit('-')
+            .next()
+            .unwrap()
+            .parse()
+            .unwrap();
+        attrs.extend([near_sdk::serde_json::json!({"trait_type":"Edition month","value":months[(month-1) as usize]}),
+            near_sdk::serde_json::json!({"trait_type":"Edition year","value":year}),near_sdk::serde_json::json!({"trait_type":"Monthly edition","value":monthly})]);
+        extra.insert("attributes".into(), attrs.into());
+        for (key,value) in near_sdk::serde_json::json!({"schema":"near-echoes-edition-wallet-v1","account_id":account_id,
+            "controller":env::current_account_id(),"release_ns":release_ns,"policy":"dedicated-accounts-calendar-month-v1"}).as_object().unwrap(){extra.insert(key.clone(),value.clone());}
+        metadata.extra = Some(near_sdk::serde_json::Value::Object(extra).to_string());
         let edition = Edition {
             token_id: token_id.clone(),
             release_ns,

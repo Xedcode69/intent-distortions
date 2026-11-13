@@ -129,6 +129,27 @@ def dna(id:str): return json.loads(store.get(art(id)["manifest"]["sha256"]))
 @app.get("/api/v1/artworks/{id}/verify")
 def verify(id:str): return bounded_verification(art(id))
 
+@app.get("/api/v1/artworks/{id}/traits")
+async def artwork_traits(id:str):
+    from .services.nft_traits import trait_bundle
+    artwork=art(id)
+    result=trait_bundle(store,artwork)
+    status="not_published";edition_attributes=[];reference=None
+    if artwork["nft"]["status"]=="minted" and settings.near_nft_contract:
+        from .services.near_rpc import NearRPC
+        token=await NearRPC(settings.near_rpc_url).view(settings.near_nft_contract,"nft_token",{"token_id":artwork["nft"]["token_id"]})
+        try:extra=json.loads((token or {}).get("metadata",{}).get("extra") or "{}")
+        except (ValueError,TypeError):extra={}
+        if not isinstance(extra,dict):extra={}
+        reference=extra.get("traits_reference")
+        if reference:
+            if reference.get("sha256")!=result["sha256"] or not all(a in extra.get("attributes",[]) for a in result["attributes"]):
+                raise HTTPException(409,"Onchain NFT traits differ from the frozen artwork")
+            status="published"
+            edition_attributes=[a for a in extra["attributes"] if a["trait_type"] in ("Edition month","Edition year","Monthly edition")]
+        else:status="legacy_missing"
+    return {**result,"mint_status":artwork["nft"]["status"],"onchain_status":status,"edition_attributes":edition_attributes,"published_reference":reference}
+
 @app.get("/api/v1/epochs")
 def epochs(limit:int=50,offset:int=0):
     if not 1<=limit<=100 or offset<0:raise HTTPException(422,"Invalid page bounds")

@@ -5,7 +5,6 @@ Requires deployed initialized contracts, funded accounts and public HTTPS/IPFS U
 """
 import argparse
 import asyncio
-import base64
 import json
 import shutil
 import subprocess
@@ -18,8 +17,9 @@ from app.config import settings
 from app.database import init_db,Artwork
 from app.services.near_rpc import NearRPC
 from app.services.provenance import verify_artwork
-from app.services.storage import ContentStore
+from app.services.storage import content_store
 from app.services.canonical_data import sha
+from app.services.nft_traits import publish_traits,token_metadata
 
 def call(contract,method,args,signer,deposit="0 NEAR"):
     # Structured argv, no shell, no key material. An uncertain CLI outcome is
@@ -32,34 +32,39 @@ async def main():
     parser=argparse.ArgumentParser();parser.add_argument("--edition",default="demo-000001")
     parser.add_argument("--minter",required=True);parser.add_argument("--bidder-a",required=True);parser.add_argument("--bidder-b",required=True)
     parser.add_argument("--media-uri",required=True);parser.add_argument("--provenance-uri",required=True)
+    parser.add_argument("--traits-uri",help="Public immutable HTTPS/IPFS URL of exported nft-traits.json; S3 publication supplies it automatically")
     parser.add_argument("--bid-a",default="1 NEAR");parser.add_argument("--bid-b",default="1.1 NEAR")
     parser.add_argument("--wait-for-end",action="store_true");a=parser.parse_args()
     if settings.near_network!="testnet":raise SystemExit("This runner supports testnet only")
     if not shutil.which("near"):raise SystemExit("Install near-cli-rs and configure your testnet OS keychain accounts first")
     if not settings.near_nft_contract or not settings.near_auction_contract:raise SystemExit("Configure both deployed testnet contracts")
-    for uri in [a.media_uri,a.provenance_uri]:
+    for uri in [a.media_uri,a.provenance_uri,*([a.traits_uri] if a.traits_uri else [])]:
         if not uri.startswith(("https://","ipfs://")):raise SystemExit("Public immutable media/provenance URI required; local URLs are not publishable")
     factory=init_db();rpc=NearRPC(settings.near_rpc_url)
     with factory() as db:
         row=db.get(Artwork,a.edition)
         if not row:raise SystemExit("Run the local pipeline first")
         artwork=row.payload
-    store=ContentStore(settings.data_dir/"content")
+    store=content_store(settings)
     assert verify_artwork(store,artwork)["valid"]
     p=json.loads(store.get(artwork["provenance"]["sha256"]))
+    traits,traits_ref=publish_traits(store,artwork)
+    a.traits_uri=a.traits_uri or traits_ref["uri"]
+    if not a.traits_uri.startswith(("https://","ipfs://")):raise SystemExit("Upload exported nft-traits.json and pass --traits-uri, or configure S3 publication")
+    traits_ref={**traits_ref,"uri":a.traits_uri}
     import httpx
     async with httpx.AsyncClient(timeout=60,follow_redirects=True) as client:
-        for uri,expected in [(a.media_uri,artwork["image_hash"]),(a.provenance_uri,artwork["provenance"]["sha256"])]:
+        for uri,expected in [(a.media_uri,artwork["image_hash"]),(a.provenance_uri,artwork["provenance"]["sha256"]),(a.traits_uri,traits["sha256"])]:
             url="https://ipfs.io/ipfs/"+uri[7:] if uri.startswith("ipfs://") else uri
             response=await client.get(url);response.raise_for_status()
             if sha(response.content).hex()!=expected:raise SystemExit("Public URI bytes do not match frozen content commitment")
     token_id=artwork["edition"]
-    economy=(await rpc.view(settings.near_nft_contract,"get_config",{})).get("version")=="echo-nft-3"
+    config=await rpc.view(settings.near_nft_contract,"get_config",{})
+    economy=config.get("version")=="echo-nft-3"
+    if economy and config.get("trait_schema")!="echo-nft-traits-v1":raise SystemExit("Deploy reviewed trait-capable NFT WASM before minting")
     existing=await rpc.view(settings.near_nft_contract,"get_epoch_token",{"epoch":artwork["number"]})
     if existing is None:
-        metadata={"title":artwork["title"],"description":artwork["description"]+" Mode: "+artwork["mode"],
-            "media":a.media_uri,"media_hash":base64.b64encode(bytes.fromhex(artwork["image_hash"])).decode(),"copies":1,
-            "reference":a.provenance_uri,"reference_hash":base64.b64encode(bytes.fromhex(artwork["provenance"]["sha256"])).decode()}
+        metadata=token_metadata(artwork,traits,traits_ref,a.media_uri,a.provenance_uri)
         commitment={"epoch":artwork["number"],"image_hash":artwork["image_hash"],"provenance_hash":artwork["provenance"]["sha256"],"merkle_root":artwork["merkle_root"],"seed":artwork["seed"],"block_hash":artwork["block"]["hash"]}
         if economy:
             if settings.first_release_sunday!="2026-11-15":raise SystemExit("Economy requires FIRST_RELEASE_SUNDAY=2026-11-15")

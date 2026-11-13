@@ -1,0 +1,17 @@
+# Frozen collectible traits
+
+`echo-nft-traits-v1` is an immutable projection of an edition's saved scene and provenance. It does not redraw the artwork, change its seed or rewrite historical provenance. Trait JSON contains conventional `attributes` entries (`trait_type`, `value`), the frozen title/description, and source hashes for provenance, scene, image, seed and Merkle root. Its canonical JSON SHA-256 is independently reproducible.
+
+The projection includes family, global edition, renderer version, contributing record count, recognized **source** networks (excluding Unmapped and destination-only networks), route count, symmetry, dimensions, actual rendered palette, and renderer-4 material/theme/complexity/background, family controls and selected aggregate data measurements. Material/theme use the resolved renderer controls, not free-text AI suggestions. Older renderers omit controls they did not implement. Values stay numeric where appropriate; no artificial rarity grades are assigned.
+
+Before minting, the worker publishes the trait JSON to the existing content-addressed store, then verifies the public HTTPS bytes along with the original artwork files. The standard NEP-177 `reference`/`reference_hash` still identify the original provenance. NFT `extra` is a JSON object with root-level `attributes`, `trait_schema`, `traits_reference` (URI/hash), `trait_source`, and the existing wallet binding. The on-chain factory preserves these fields and adds authoritative edition month, year and monthly edition number from its enforced schedule. Supplied values cannot override that date or the dedicated wallet address. These metadata values have no owner-update method and remain unchanged on transfer.
+
+The trait-capable contract advertises `trait_schema` from `get_config`; preflight rejects older economy WASM that would nest attributes inside a string. This release changes code, not the existing contract state layout. Pin the newly built/reviewed NFT WASM hash before deployment; do not assume an old code hash supports traits. No real-network deployment is performed here.
+
+`GET /api/v1/artworks/{id}/traits` derives the attributes from hash-checked stored inputs. For minted editions, it additionally checks the NFT's live metadata reference/hash and core attributes before reporting them as published. Calendar attributes come from that immutable NFT metadata. Missing legacy attributes are labelled as missing, not silently backfilled. The artwork page and historical demo display trait cards and source/document hashes. The public demo contains only the allowlisted aggregate traits; it never claims the replay NFT was minted.
+
+Wallet balances, current ownership, early withdrawal and monthly draw eligibility remain live Economy contract data. None are represented as permanent art traits. Marketplace indexing/display support varies; NEP-177 allows custom `extra`, but universal rendering of every custom attribute is not guaranteed.
+
+Export with `uv run --locked python scripts/export_artwork.py <edition-id>` to obtain `nft-traits.json` alongside the original files. For local testnet exports, upload it unchanged and pass `--traits-uri https://...` or `ipfs://...` to `scripts/testnet_lifecycle.py`. Managed S3 publication supplies its immutable URL automatically. The runner verifies those exact bytes before signing.
+
+Validation results and the current contract hashes are recorded in the [trait validation report](reports/2026-11-13-nft-traits-validation.md).

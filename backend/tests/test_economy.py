@@ -14,7 +14,7 @@ async def test_economy_preflight_checks_bindings_policy_and_embedded_code():
         async def view(self,contract,method,args):
             if method=="get_economy":return {"creator":"team.testnet","treasury":"treasury.testnet","vault_code_hash":("cd" if self.bad else "ab")*32,
                 "treasury_bps":2000,"vault_bps":8000,"early_exit_bps_of_vault":4000,"exited_ticket_reentry":False}
-            if contract=="nft.testnet":return {"version":"echo-nft-3","minter":"worker.testnet","auction_contract":"auction.testnet"}
+            if contract=="nft.testnet":return {"version":"echo-nft-3","minter":"worker.testnet","auction_contract":"auction.testnet","trait_schema":"echo-nft-traits-v1"}
             return {"version":"echo-auction-3","owner":"worker.testnet","nft_contract":"nft.testnet","creator":"team.testnet","duration_ns":str(86400*10**9),
                 "extension_ns":"0","splits":[2000,8000],"treasury_accounts":["treasury.testnet"]}
     rpc=RPC();assert (await validate_contracts(settings,rpc))["contracts"]=="bindings_and_policy_verified"

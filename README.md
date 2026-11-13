@@ -88,6 +88,6 @@ Current mapped editions use [renderer-4](docs/RENDERER_V4.md): a verifiable seed
 
 Onchain views are authoritative for ownership, highest bids and treasury balances. The receipt index contains finalized receipts observed by the worker or submitted by the first-party wallet flow; historical bid coverage is explicitly partial. Contracts store commitments and do not verify drand onchain. Worker signing does not authorize treasury withdrawals.
 
-Read [contract operations](docs/CONTRACTS.md), [algorithms](docs/ALGORITHMS.md), [provenance](docs/PROVENANCE.md), [privacy](docs/PRIVACY.md), [security](docs/SECURITY.md) and [API](docs/API.md).
+Read [contract operations](docs/CONTRACTS.md), [NFT traits](docs/NFT_TRAITS.md), [algorithms](docs/ALGORITHMS.md), [provenance](docs/PROVENANCE.md), [privacy](docs/PRIVACY.md), [security](docs/SECURITY.md) and [API](docs/API.md).
 
 MIT-licensed software. NFT ownership does not itself grant copyright or exclusive commercial rights.

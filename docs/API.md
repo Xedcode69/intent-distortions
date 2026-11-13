@@ -10,7 +10,7 @@ Local historical mode additionally exposes `GET /api/v1/replay/progress`: allowl
 |---|---|
 | Health/configuration | `GET /health`, `/protocol` (no secret values) |
 | Epochs | `GET /epochs`, `/epochs/current`, `/epochs/{id}`, `/epochs/{id}/statistics`, `/epochs/{id}/provenance` |
-| Artworks | `GET /artworks`, `/artworks/latest`, `/artworks/{id}`, `/artworks/{id}/dna`, `/artworks/{id}/manifest`, `/artworks/{id}/verify` |
+| Artworks | `GET /artworks`, `/artworks/latest`, `/artworks/{id}`, `/artworks/{id}/dna`, `/artworks/{id}/manifest`, `/artworks/{id}/verify`, `/artworks/{id}/traits` |
 | Files | `GET /content/{sha256}`; local byte validation or production redirect to the immutable artifact CDN |
 | Auctions | `GET /auctions`, `/auctions/active`, `/auctions/{edition-id}`, `/auctions/{edition-id}/bids` |
 | Analytics | `GET /analytics/summary`, `/analytics/chain-distribution`, `/analytics/weekly-activity`, `/analytics/treasury` |
@@ -26,6 +26,8 @@ Merkle input: `{ "record":{...}, "proof":[{"hash":"64 hex","side":"left"}], "roo
 Demo generation is restricted to development/demo configuration, loopback clients and allowed browser origins. Repeated runs return existing frozen state. There is deliberately no public reset route; use a new disposable local demo database for a separate experiment. Production editions must never be reset.
 
 No backend endpoint submits user bids. All bids/claims use a wallet-authorized contract transaction. Auction views query finalized onchain state. The bid-history route returns only successful indexed receipts and labels coverage as partial; its empty array is not proof of no historical bids. Undeployed treasury responses contain zero earned revenue. `/analytics/curation` reads the current permitted owner choice from the contract.
+
+The traits route returns frozen artwork attributes and their source/document hashes. Minted editions additionally verify root-level NFT metadata before reporting `published`; conflicting traits return 409. Unminted replay traits do not imply NFT ownership. See [NFT traits](NFT_TRAITS.md) for the metadata schema and legacy behavior.
 
 Artwork and epoch lists accept `limit` (1–100) and nonnegative `offset`. Epoch detail omits the full record array and links the immutable snapshot. Production rerender verification requires administrator authorization; public integrity checks remain bounded. The public frontend proxy excludes administrator/demo paths. `/health` reports worker-managed integrations in production and does not imply credentialed acceptance.
 

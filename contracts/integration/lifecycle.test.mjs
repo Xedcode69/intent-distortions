@@ -65,9 +65,15 @@ test("real WASM receipts: keyless accounts, refunds, vault exit, rollover and ve
   const all=[];
   for(let i=0;i<7;i++){
    const release=FIRST+BigInt(i)*WEEK,epoch=i+1,bytes=Buffer.alloc(32,epoch),hash=bytes.toString("hex");
-   const metadata={title:`Echo ${epoch}`,media:"https://example.com/image",media_hash:bytes.toString("base64"),copies:1,reference:"https://example.com/proof",reference_hash:bytes.toString("base64")};
+   const metadata={title:`Echo ${epoch}`,media:"https://example.com/image",media_hash:bytes.toString("base64"),copies:1,reference:"https://example.com/proof",reference_hash:bytes.toString("base64"),
+    extra:JSON.stringify({trait_schema:"echo-nft-traits-v1",attributes:[{trait_type:"Material",value:"glass"},...Array.from({length:32},(_,n)=>({trait_type:`Test scene control ${n}`,value:n/32}))],traits_reference:{uri:"https://example.com/traits",sha256:"03".repeat(32)}})};
    await operator.call(nft,"mint_scheduled_artwork",{release_ns:String(release),metadata,commitment:{epoch,image_hash:hash,provenance_hash:hash,merkle_root:hash,seed:hash,block_hash:"sandbox-block"}},opts(N/10n));
    const token=await nft.view("get_epoch_token",{epoch});all.push(token);
+   const extra=JSON.parse((await nft.view("nft_token",{token_id:token})).metadata.extra);
+   assert.equal(extra.attributes.find(a=>a.trait_type==="Material").value,"glass");
+   assert.equal(extra.attributes.find(a=>a.trait_type==="Monthly edition").value,i<3?i+1:i-2);
+   assert.equal(extra.attributes.find(a=>a.trait_type==="Edition month").value,i<3?"November":"December");
+   assert.equal(extra.traits_reference.sha256,"03".repeat(32));
    await root.call(nft,"create_edition_wallet",{token_id:token},opts());
    const d=await nft.view("get_edition_wallet",{token_id:token});assert.equal(d.wallet_status,"Ready");
    assert.equal(d.account_id,`${i<3?`november2026-edition-${i+1}`:`december2026-edition-${i-2}`}.${nft.accountId}`);

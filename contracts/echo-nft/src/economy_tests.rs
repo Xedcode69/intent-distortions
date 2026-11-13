@@ -28,6 +28,50 @@ fn contract() -> EchoNFT {
         id("treasury.testnet"),
     )
 }
+
+#[test]
+fn mint_traits_remain_flat_and_immutable_with_authoritative_calendar_and_wallet() {
+    let mut c = contract();
+    let date = calendar::FIRST_EDITION;
+    ctx("operator.testnet", 10u128.pow(24), date);
+    let bytes = vec![77u8; 32];
+    let hash = beacon::hex(&bytes);
+    let metadata:TokenMetadata=near_sdk::serde_json::from_value(near_sdk::serde_json::json!({"title":"Echo","media":"https://art.example/image","media_hash":Base64VecU8(bytes.clone()),
+        "copies":1,"reference":"https://art.example/proof","reference_hash":Base64VecU8(bytes),"extra":near_sdk::serde_json::json!({"trait_schema":"echo-nft-traits-v1","account_id":"fake.near",
+            "attributes":[{"trait_type":"Material","value":"glass"},{"trait_type":"Edition month","value":"Fake"}],"traits_reference":{"sha256":"03".repeat(32),"uri":"https://art.example/traits"}}).to_string()})).unwrap();
+    let t = c.mint_scheduled_artwork(
+        U64(date),
+        metadata,
+        Commitment {
+            epoch: 1,
+            image_hash: hash.clone(),
+            provenance_hash: hash.clone(),
+            merkle_root: hash.clone(),
+            seed: hash,
+            block_hash: "block".into(),
+        },
+    );
+    let original = t.metadata.unwrap().extra.unwrap();
+    let extra: near_sdk::serde_json::Value = near_sdk::serde_json::from_str(&original).unwrap();
+    assert_eq!(extra["account_id"], "november2026-edition-1.nft.testnet");
+    assert_eq!(extra["attributes"][0]["value"], "glass");
+    assert_eq!(extra["attributes"][1]["value"], "November");
+    assert_eq!(extra["attributes"][2]["value"], 2026);
+    assert_eq!(extra["attributes"][3]["value"], 1);
+    assert_eq!(extra["trait_schema"], "echo-nft-traits-v1");
+    assert!(extra.get("original_extra").is_none());
+    ctx("team.testnet", 1, date + 1);
+    c.nft_transfer(id("alice.testnet"), t.token_id.clone(), None, None);
+    assert_eq!(
+        c.nft_token(t.token_id)
+            .unwrap()
+            .metadata
+            .unwrap()
+            .extra
+            .unwrap(),
+        original
+    );
+}
 fn mint(c: &mut EchoNFT, date: u64) -> String {
     let epoch = (date - calendar::FIRST_EDITION) / (7 * calendar::DAY) + 1;
     ctx("operator.testnet", 10u128.pow(24), date);

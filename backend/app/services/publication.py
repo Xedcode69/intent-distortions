@@ -1,4 +1,3 @@
-import base64
 import hashlib
 import httpx
 import time
@@ -8,6 +7,7 @@ from .storage import content_store
 from .provenance import verify_artwork
 from .chain_writer import ChainWriter
 from .near_rpc import NearRPC
+from .nft_traits import publish_traits, token_metadata
 
 async def index_receipt(factory,receipt,contract,token_id,rpc):
     for outcome in receipt.get("receipts_outcome",[]):
@@ -32,8 +32,9 @@ async def publish(factory,settings,artwork,writer=None,rpc=None):
     if not verify_artwork(store,artwork,True)["valid"]:raise ValueError("Artwork verification failed")
     import json
     provenance=json.loads(store.get(artwork["provenance"]["sha256"]))
+    traits,traits_ref=publish_traits(store,artwork)
     async with httpx.AsyncClient(timeout=60,follow_redirects=False) as client:
-        for ref in [artwork["provenance"],*provenance["files"].values()]:
+        for ref in [artwork["provenance"],*provenance["files"].values(),traits_ref]:
             uri,digest=ref["uri"],ref["sha256"]
             if not uri.startswith("https://"):raise ValueError("Public immutable HTTPS artifacts are required")
             hasher=hashlib.sha256()
@@ -44,13 +45,12 @@ async def publish(factory,settings,artwork,writer=None,rpc=None):
     token=artwork["edition"]
     config=await rpc.view(settings.near_nft_contract,"get_config",{})
     economy=config.get("version")=="echo-nft-3"
+    if economy and config.get("trait_schema")!="echo-nft-traits-v1":raise ValueError("NFT contract lacks frozen trait support; update reviewed WASM before minting")
     expected={"epoch":artwork["number"],"image_hash":artwork["image_hash"],"provenance_hash":artwork["provenance"]["sha256"],
               "merkle_root":artwork["merkle_root"],"seed":artwork["seed"],"block_hash":artwork["block"]["hash"]}
     existing=await rpc.view(settings.near_nft_contract,"get_epoch_token",{"epoch":artwork["number"]})
     if existing is None:
-        metadata={"title":artwork["title"],"description":artwork["description"],"media":artwork["image"],
-            "media_hash":base64.b64encode(bytes.fromhex(artwork["image_hash"])).decode(),"copies":1,
-            "reference":artwork["provenance"]["uri"],"reference_hash":base64.b64encode(bytes.fromhex(artwork["provenance"]["sha256"])).decode()}
+        metadata=token_metadata(artwork,traits,traits_ref)
         if economy:
             release=datetime.strptime(settings.first_release_sunday,"%Y-%m-%d").replace(tzinfo=timezone.utc)+timedelta(weeks=artwork["number"]-1)
             method="mint_scheduled_artwork";args={"release_ns":str(int(release.timestamp())*10**9),"metadata":metadata,"commitment":expected}
@@ -61,11 +61,18 @@ async def publish(factory,settings,artwork,writer=None,rpc=None):
     elif existing!=token:raise ValueError("Onchain epoch conflicts with canonical token")
     commitment=await rpc.view(settings.near_nft_contract,"get_provenance",{"token_id":token})
     if commitment!=expected:raise ValueError("Onchain commitments differ from frozen edition")
+    token_view=await rpc.view(settings.near_nft_contract,"nft_token",{"token_id":token})
+    try:extra=json.loads(token_view["metadata"].get("extra") or "{}")
+    except (ValueError,TypeError):extra={}
+    if not isinstance(extra,dict):extra={}
+    published_traits=extra.get("traits_reference",{}).get("sha256")==traits["sha256"] and all(a in extra.get("attributes",[]) for a in traits["attributes"])
+    if existing is None and not published_traits:raise ValueError("Minted NFT trait metadata mismatch")
     from ..database import Effect
     with factory.begin() as db:
         row=db.get(Artwork,artwork["id"]);effect=db.get(Effect,f'{artwork["id"]}:mint')
         row.payload={**row.payload,"nft":{"status":"minted","token_id":token,"contract":settings.near_nft_contract,
-            "transaction_hash":effect.transaction_hash if effect else None,"evidence":"finalized NFT commitment view"}}
+            "transaction_hash":effect.transaction_hash if effect else None,"evidence":"finalized NFT commitment view",
+            "traits":traits_ref if published_traits else None,"trait_status":"published" if published_traits else "legacy_missing"}}
     if economy:
         wallet=await rpc.view(settings.near_nft_contract,"get_edition_wallet",{"token_id":token})
         if wallet["wallet_status"] in ("Uncreated","Creating"):

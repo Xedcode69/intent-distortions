@@ -12,6 +12,9 @@ def test_api_reads_and_recomputes(monkeypatch,tmp_path):
     with TestClient(main.app) as c:
         assert c.get("/api/v1/health").json()["mode"]=="demo"
         a=c.get("/api/v1/artworks/latest").json()
+        traits=c.get(f'/api/v1/artworks/{a["id"]}/traits').json()
+        assert traits["source"]["image_sha256"]==a["image_hash"] and traits["onchain_status"]=="not_published"
+        assert traits["edition_attributes"]==[]
         assert c.get(a["image"]).headers["content-type"]=="image/png"
         assert c.get(f'/api/v1/artworks/{a["id"]}/verify').json()["valid"]
         main.verification_slots.acquire()

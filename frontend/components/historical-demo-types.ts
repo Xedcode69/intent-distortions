@@ -7,6 +7,7 @@ export type ArtworkScene = {version?:string;family?:string;width:number;height:n
   visual_features_sha256?:string;network_colors?:Record<string,string>;
   animation?:{version:string;period_seconds:number;reveal_seconds:number;pulse_hz:number;activity_profile:number[];direction:number;meaning:string}};
 export type HistoricalDemoData = {
+  traits?:import("./artwork-traits").TraitBundle;
   family_selection?:import("@/lib/family-selection").FamilyProof;
   schema:string;sunday:string;captured_at:number;interval:{start:number;end:number;end_ns:string};
   artwork:{title:string;description:string;composition:string;ai_provider:string;image_hash:string;seed:string;merkle_root:string};
