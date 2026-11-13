@@ -1,10 +1,19 @@
-export type SceneShape = {kind:string;layer:string;points?:number[][];center?:number[];radius?:number;color:string;width?:number;alpha:number};
-export type ArtworkScene = {width:number;height:number;background:string;shapes:SceneShape[]};
+export type SceneShape = {kind:string;layer:string;points?:number[][];center?:number[];radius?:number;color:string;width?:number;alpha:number;
+  stroke?:string;glow?:boolean;depth?:number;time?:number;weight?:number;motion_rate?:number};
+export type ArtworkScene = {version?:string;family?:string;width:number;height:number;background:string;shapes:SceneShape[];
+  family_selection?:import("@/lib/family-selection").FamilyProof;
+  background_style?:{top:string;bottom:string;light:number[];intensity:number};
+  controls?:{family:Record<string,string|number>;style:{material:string;theme:string;complexity:number;dark:boolean;palette:string[]}};
+  visual_features_sha256?:string;network_colors?:Record<string,string>;
+  animation?:{version:string;period_seconds:number;reveal_seconds:number;pulse_hz:number;activity_profile:number[];direction:number;meaning:string}};
 export type HistoricalDemoData = {
+  family_selection?:import("@/lib/family-selection").FamilyProof;
   schema:string;sunday:string;captured_at:number;interval:{start:number;end:number;end_ns:string};
   artwork:{title:string;description:string;composition:string;ai_provider:string;image_hash:string;seed:string;merkle_root:string};
   statistics:{total_swaps:number;unique_chains:number;particle_count:number;chains?:Record<string,number>;
     dominant_routes?:Record<string,number>;activity?:number[];public_volume_usd?:string;volume_coverage?:number;
+    visual_features?:{version:string;asset_diversity:number;reciprocity:number;flow_imbalance:number;burstiness:number;
+      route_diversity:number;size_inequality:number;community_count:number;top_one_percent_volume_share:number;[key:string]:unknown};
     network_mapping?:{policy:string;sha256:string;observed_at:number;total_assets:number;resolved_assets:number;
       unresolved_assets:number;total_records:number;source_records_mapped:number;destination_records_mapped:number}};
   checkpoint:{height:number;hash:string;timestamp_ns:string};beacon:{round:number;released_at:number;randomness:string};

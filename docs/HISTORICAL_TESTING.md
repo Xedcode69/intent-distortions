@@ -1,5 +1,7 @@
 # Test a previous week's data
 
+Current mapped runs use [renderer-4](RENDERER_V4.md): the art seed verifiably selects the family, AI supplies styling within that family, and frozen measurements drive expanded geometry, materials and motion. Existing renderer-1/2/3 editions retain their original verification paths. Use a fresh replay directory to regenerate an older capture with new rules.
+
 Historical replay exercises the actual collection, checkpoint verification, canonical dataset, Merkle tree, seed, creative direction, renderer and artifact-verification code. It uses its own database and storage, keeps raw captures private, and never signs transactions. The explanatory static demo remains separate.
 
 ## Current prerequisite

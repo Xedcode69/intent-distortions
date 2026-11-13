@@ -3,8 +3,9 @@ from datetime import datetime,timezone
 from sqlalchemy import select
 from ..database import Protocol,Epoch
 from .canonical_data import canonical,sha
-from .art_renderer import NETWORK_VERSION
+from .visual_features import RENDERER_VERSION,FEATURE_VERSION
 from .asset_networks import POLICY
+from .family_selection import POLICY as FAMILY_POLICY
 from .randomness import CHAIN_HASH
 
 def policy(settings):
@@ -17,7 +18,8 @@ def policy(settings):
         "first_sunday":int(sunday.timestamp()),"window_seconds":61200,"beacon_hour_utc":18,
         "drand_chain_hash":CHAIN_HASH,"reconciliation_delay_seconds":settings.reconciliation_delay_seconds,
         "max_observation_age_seconds":settings.freeze_observation_max_age_seconds,
-        "renderer_version":NETWORK_VERSION,"asset_mapping_policy":POLICY,"art_seed_policy":"registry-bound-v1",
+        "renderer_version":RENDERER_VERSION,"visual_features_version":FEATURE_VERSION,"family_policy":FAMILY_POLICY,
+        "asset_mapping_policy":POLICY,"art_seed_policy":"registry-bound-v1",
         "canonical_schema":"echo-record-v1","odd_leaf_policy":"duplicate_last",
         "ai_policy":"first-valid-v1","ai_model":settings.near_ai_text_model,"allow_ai_fallback":settings.allow_ai_fallback,
         "freeze_policy":"latest complete consistent observation finished before fixed freeze; no late observations"}

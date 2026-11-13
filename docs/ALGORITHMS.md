@@ -1,5 +1,7 @@
 # Protocol algorithms v1
 
+Current mapped editions use the [renderer-4 extension](RENDERER_V4.md), adding unbiased seed-based family selection, AI styling within the fixed family, frozen visual measurements and richer scene primitives. The base record, Merkle, checkpoint and network-bound seed rules below remain in use. Earlier renderer descriptions remain for verification of frozen artifacts.
+
 All protocol times are UTC. The production window is Sunday `[00:00,17:00)`, with the first default-network drand round released at or after 18:00 fixed in advance. Reconciliation default is 3600 seconds; automatic production sealing is not enabled in this prototype. Consecutive activity intervals are `[previous checkpoint,current checkpoint)`, comparing documented created-at seconds promoted to integer nanoseconds against precise block checkpoints. This is creation time, not settlement time.
 
 ## Encoding

@@ -100,8 +100,10 @@ async def run_epoch(factory, settings, *, number, mode, raw, start, end, block, 
                        "selection":selection,"source":source,"previous_hash":previous_hash,
                        "freeze_timestamp":source.get("freeze_timestamp",int(time.time())),"merkle_root":root(records),"start_ns":str(start_ns or start*10**9),"end_ns":str(end_ns or end*10**9)}
             if asset_mapping is not None:
+                from .visual_features import RENDERER_VERSION
                 payload["asset_mapping"]=asset_mapping
                 payload["asset_mapping_ref"]=store.put(canonical(asset_mapping))
+                payload["renderer_version"]=RENDERER_VERSION
             epoch = Epoch(id=epoch_id,number=number,mode=mode,status="frozen",start=start,end=end,payload=payload)
             db.add(epoch)
             db.flush()
@@ -118,34 +120,56 @@ async def run_epoch(factory, settings, *, number, mode, raw, start, end, block, 
         asset_mapping=frozen.get("asset_mapping")
         if asset_mapping is not None and sha(canonical(asset_mapping)).hex()!=frozen["asset_mapping_ref"]["sha256"]:
             raise ValueError("Frozen network mapping hash mismatch")
-        stats = statistics(records,start,end,asset_mapping)
+        renderer_version=frozen.get("renderer_version","echo-renderer-3" if asset_mapping is not None else "echo-renderer-2")
+        if renderer_version=="echo-renderer-4":
+            from .visual_features import expressive_statistics
+            stats=expressive_statistics(records,start,end,asset_mapping)
+        else:
+            stats = statistics(records,start,end,asset_mapping)
         seed = master_seed(number,frozen["merkle_root"],frozen["block"]["hash"],frozen["beacon"]["randomness"],frozen["previous_hash"])
         if asset_mapping is not None:
             seed=mapped_seed(seed,asset_mapping)
+        family_selection=None
+        if renderer_version=="echo-renderer-4":
+            from .family_selection import select_family
+            family_selection=select_family(seed)
         with factory() as db:
             persisted_direction = db.get(Epoch,epoch_id).payload.get("creative")
         if persisted_direction is None:
-            direction, ai = await creative_direction(seed,stats,settings)
+            if family_selection:
+                direction,ai=await creative_direction(seed,stats,settings,family_selection["family"])
+            else:
+                direction, ai = await creative_direction(seed,stats,settings)
             curation={"theme":"celestial","source":"published_default","applied":False}
             if mode!="demo" and settings.near_auction_contract:
                 expected_deadline=(selection["sunday_start"]+17*3600)*10**9
                 choice=await NearRPC(settings.near_rpc_url).view(settings.near_auction_contract,"get_theme_for",{"deadline_ns":str(expected_deadline)})
                 if choice.get("locked") and choice.get("token_id") and int(choice["deadline_ns"])==expected_deadline:
                     curation={**choice,"source":"locked_onchain_owner_choice","applied":True}
-                    direction=apply_curatorial_theme(direction,choice["theme"])
+                    direction=apply_curatorial_theme(direction,choice["theme"],preserve_family=family_selection is not None)
             persisted_direction = {"direction":direction,"ai":ai,"curation":curation}
             with factory.begin() as db:
                 epoch=db.get(Epoch,epoch_id)
                 epoch.payload={**epoch.payload,"creative":persisted_direction}
         direction, ai = persisted_direction["direction"], persisted_direction["ai"]
-        manifest=scene(seed,records,stats,direction,start,end,frozen["previous_hash"],number,asset_mapping)
+        if family_selection and direction["composition"]!=family_selection["family"]:
+            raise ValueError("Saved direction differs from the verifiable family selection")
+        if renderer_version=="echo-renderer-4":
+            from .expressive_renderer import scene_v4
+            manifest=scene_v4(seed,records,stats,direction,start,end,frozen["previous_hash"],number,asset_mapping)
+        else:
+            manifest=scene(seed,records,stats,direction,start,end,frozen["previous_hash"],number,asset_mapping)
         files=render(manifest)
         files["artwork-manifest.json"]=canonical(manifest)
         files["source-snapshot.json"]=canonical(records)
         if asset_mapping is not None:
             files["asset-networks.json"]=canonical(asset_mapping)
         files["merkle-proofs.json"]=canonical(proof_index(records))
-        files["animation-manifest.json"]=canonical({"version":"motion-v1","seed":seed,"period_seconds":24,"motion":"fixed SVG layers; optional presentation rotation","canonical":"static PNG"})
+        if renderer_version=="echo-renderer-4":
+            files["visual-features.json"]=canonical(stats["visual_features"])
+            files["animation-manifest.json"]=canonical({**manifest["animation"],"seed":seed,"canonical":"static PNG"})
+        else:
+            files["animation-manifest.json"]=canonical({"version":"motion-v1","seed":seed,"period_seconds":24,"motion":"fixed SVG layers; optional presentation rotation","canonical":"static PNG"})
         refs={name:store.put(data) for name,data in files.items()}
         provenance={"schema_version":"echo-provenance-v1","id":epoch_id,"epoch":number,"mode":mode,
             "data_classification":source["classification"],"interval":{"start":start,"end":end,"start_ns":frozen["start_ns"],"end_ns":frozen["end_ns"],"rule":"[start,end)","timestamp_field":"createdAtTimestamp"},
@@ -156,6 +180,9 @@ async def run_epoch(factory, settings, *, number, mode, raw, start, end, block, 
             "trust":{"data_completeness":"provider-trusted; Merkle membership is not a completeness proof", "randomness":"offchain BLS verification; contract stores commitments", "storage":"S3 content-addressed immutable keys" if settings.storage_provider=="s3" else "local content-addressed store; not IPFS-pinned", "image":"static file hash authoritative; replay requires pinned renderer dependencies"}}
         if asset_mapping is not None:
             provenance["asset_mapping"]=refs["asset-networks.json"]
+        if renderer_version=="echo-renderer-4":
+            provenance["visual_features"]=refs["visual-features.json"]
+            provenance["family_selection"]=family_selection
         provenance_ref=store.put(canonical(provenance))
         result={"id":epoch_id,"edition":f"ECHO-{number:06d}","number":number,"mode":mode,"title":direction["title"],
                 "description":direction["description"],"composition":direction["composition"],"palette":direction["palette"],

@@ -71,6 +71,10 @@ def publish_replay(report_path, destination):
     hashes = {name:sha(data).hex() for name, data in files.items()}
     if "network_mapping" in artwork["stats"]:
         summary["statistics"]["network_mapping"]=artwork["stats"]["network_mapping"]
+    if "visual_features" in artwork["stats"]:
+        summary["statistics"]["visual_features"]={key:value for key,value in artwork["stats"]["visual_features"].items() if key not in ("nodes","routes")}
+    if "family_selection" in provenance:
+        summary["family_selection"]=provenance["family_selection"]
     edition = sha(canonical({"summary":summary, "files":hashes})).hex()
     summary["files"] = {name:{"url":f"/historical-demo/editions/{edition}/{name}", "sha256":digest}
                         for name, digest in hashes.items()}

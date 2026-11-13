@@ -1,5 +1,7 @@
 # Registry-aware historical artwork — 8 November 2026
 
+> The current Demo uses the [expressive renderer-4 edition](2026-11-08-expressive-artwork.md), preserving this edition's capture and network lookup. This report remains a historical comparison.
+
 Artwork: **Cross-Chain Flux**. Renderer: `echo-renderer-3`. Creative direction: NEAR AI Cloud.
 
 **130,086 successful records were reused from the verified private capture; no Explorer transaction pages were downloaded again.** The exact interval, canonical snapshot and Merkle root are unchanged. The network-bound seed and regenerated image reflect the corrected network assignments.

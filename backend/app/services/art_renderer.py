@@ -152,6 +152,9 @@ def scene(seed,records,stats,direction,start,end,previous_hash,epoch,asset_mappi
     return result
 
 def render(manifest):
+    if manifest.get("version")=="echo-renderer-4":
+        from .expressive_renderer import render_v4
+        return render_v4(manifest)
     from io import BytesIO
     size = manifest["width"]
     canvas = Image.new("RGB",(size,size),manifest["background"])

@@ -1,5 +1,7 @@
 # Provenance and verification
 
+Renderer-4 additionally stores `visual-features.json`, its content reference and a `family_selection` proof. Verification recomputes the first accepted HMAC draw, checks that the saved direction retains that family, checks the frozen measurements, and rebuilds scene controls, materials, primitives and PNG bytes. Motion parameters remain a presentation of the static canonical artwork. See [renderer-4](RENDERER_V4.md). Older editions retain their original verification behavior.
+
 Live editions include the committed policy hash, exact freeze time, authenticated complete observation evidence and fixed-time eligibility rules. The latest two eligible observations must agree. This is provider-trusted observation evidence, not a cryptographic provider status-at-time proof. Production storage uses S3/CloudFront; local development retains its SHA-256 filesystem store. `scripts/verify_epoch.py` and `export_artwork.py` select the configured storage provider.
 
 New `merkle-proofs.json` artifacts use `echo-merkle-index-v1`: `leaf_count`, `odd_leaf_policy` and ordered hex `levels`. Reconstruct a sibling path from those levels in logarithmic time. Previously frozen per-record proof exports keep their original format/bytes. Scene files retain the renderer version; the PNG file/hash remains authoritative.

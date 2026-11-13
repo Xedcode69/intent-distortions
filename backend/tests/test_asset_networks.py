@@ -1,4 +1,5 @@
 import copy
+import json
 import httpx
 import pytest
 from sqlalchemy import create_engine
@@ -91,6 +92,10 @@ async def test_mapped_artwork_replays_offline_and_refuses_frozen_mapping_changes
     store=ContentStore(tmp_path/'content')
     assert verify_artwork(store,artwork,True)["valid"]
     assert await run_epoch(factory,settings,**args)==artwork
+    provenance=json.loads(store.get(artwork['provenance']['sha256']))
+    wrong_proof=copy.deepcopy(provenance);wrong_proof['family_selection']['counter']+=1
+    forged_proof={**artwork,'provenance':store.put(canonical(wrong_proof))}
+    assert not verify_artwork(store,forged_proof,True)['checks']['verifiable_family_selection']
     forged=copy.deepcopy(artwork);forged["stats"]["network_mapping"]["resolved_assets"]=0
     assert not verify_artwork(store,forged,True)["valid"]
     changed=copy.deepcopy(mapping);changed["observed_at"]=2

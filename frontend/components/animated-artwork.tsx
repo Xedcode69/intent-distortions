@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play, RotateCcw } from "lucide-react";
 import type { ArtworkScene, SceneShape } from "./historical-demo-types";
+import { ExpressiveArtwork } from "./expressive-artwork";
 
 export function useReducedAnimation(){
   const [reduced,setReduced]=useState(true);
@@ -20,7 +21,11 @@ function drawShape(ctx:CanvasRenderingContext2D,shape:SceneShape){
   else if(shape.points?.length){ctx.lineWidth=shape.width||1;shape.points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke();}
 }
 
-export function AnimatedArtwork({scene,seed,title}:{scene:ArtworkScene;seed:string;title:string}){
+export function AnimatedArtwork(props:{scene:ArtworkScene;seed:string;title:string}){
+  return props.scene.animation?.version==="data-motion-v2"?<ExpressiveArtwork {...props}/>:<LegacyAnimatedArtwork {...props}/>;
+}
+
+function LegacyAnimatedArtwork({scene,seed,title}:{scene:ArtworkScene;seed:string;title:string}){
   const canvas=useRef<HTMLCanvasElement>(null),time=useRef(0);
   const reduced=useReducedAnimation();
   const [playing,setPlaying]=useState(false),[restart,setRestart]=useState(0),[available,setAvailable]=useState(true);

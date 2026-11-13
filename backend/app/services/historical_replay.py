@@ -406,6 +406,9 @@ async def replay_week(plan, base, directory, *, action="run", rpc=None, collecto
                                             "capture": "Check JWT access, full pagination, exact boundaries and saved capture integrity.",
                                             "art_direction": "Check public token-registry access, the frozen network mapping and funded AI model access.",
                                             "verification": "Inspect the saved dataset and artifact commitments; frozen data was not reset."}.get(stage, "Inspect the saved replay inputs.")}
+        from .near_ai import DirectionGenerationError
+        if isinstance(exc,DirectionGenerationError):
+            report["stages"][stage]["reason"]=exc.safe_reason
         return report
     finally:
         if engine is not None:
