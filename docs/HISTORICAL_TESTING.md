@@ -4,7 +4,7 @@ Historical replay exercises the actual collection, checkpoint verification, cano
 
 ## Current prerequisite
 
-A real Explorer capture needs `NEAR_INTENTS_PARTNER_JWT`. No partner JWT or AI key is currently configured in the workspace. A working mainnet RPC with access to the chosen historical blocks is also needed. The public archival endpoint is severely rate limited; a failed lookup is reported rather than replaced with a fabricated or recent block.
+A real Explorer capture needs an accepted `NEAR_INTENTS_PARTNER_JWT` with **Explorer** key type from the partner console. A Distribution Channel/1Click key is not the Explorer credential. A working mainnet RPC with access to the chosen historical blocks is also needed. The public archival endpoint is severely rate limited; a failed lookup is reported rather than replaced with a fabricated or recent block.
 
 Create an ignored replay configuration without changing `.env`:
 
@@ -24,6 +24,8 @@ Edit `.env.replay` locally. Set the Explorer JWT and, if needed, a healthy `NEAR
 | `NEAR_AI_TEXT_MODEL` | Only with `--ai required` | Available model ID for that account |
 
 The template already supplies the Explorer/AI base URLs and disables chain writes. Historical artwork testing needs no wallet private key, funded NEAR account, NFT/auction contract, AWS/S3 credentials, database password or admin token. A prepared public demo needs none of the above credentials at viewing time.
+
+Keep values in ignored `.env.replay`, not the tracked `.env.replay.example`. `--check` verifies presence only; provider acceptance is established by the actual run. Copy the AI model ID exactly from the account's model catalog. Providers that support historical height lookup but cannot resolve a parent hash are handled by fetching a numeric candidate and requiring its hash to equal the selected block's exact `prev_hash`; an unlinked candidate is rejected.
 
 ## Run the test
 

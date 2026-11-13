@@ -43,6 +43,28 @@ class NearRPC:
     async def block(self, height=None):
         return (await self.call("block", {"block_id": height} if height is not None else {"finality": "final"}))["header"]
 
+    async def predecessor(self, selected):
+        try:
+            previous = (await self.call("block", {"block_id": selected["prev_hash"]}))["header"]
+        except MissingBlock:
+            # Some archival providers retain height lookup but not the hash index.
+            # A numeric candidate is valid only if it matches the exact parent hash.
+            declared = selected.get("prev_height")
+            start = declared if type(declared) is int and 0 < declared < selected["height"] else selected["height"] - 1
+            for height in range(start, max(0, start - 8), -1):
+                try:
+                    candidate = await self.block(height)
+                except MissingBlock:
+                    continue
+                if candidate["hash"] == selected["prev_hash"]:
+                    previous = candidate
+                    break
+            else:
+                raise ValueError("Exact historical predecessor unavailable from archival RPC") from None
+        if previous["hash"] != selected["prev_hash"] or previous["height"] >= selected["height"]:
+            raise ValueError("Historical predecessor hash or height mismatch")
+        return previous
+
     async def view(self, contract, method, args):
         result = await self.call("query", {"request_type": "call_function", "finality": "final", "account_id": contract,
                                  "method_name": method, "args_base64": base64.b64encode(json.dumps(args).encode()).decode()})
@@ -50,10 +72,12 @@ class NearRPC:
 
     async def verify_selected_block(self,block,target_seconds):
         selected=await self.block(block["height"])
-        previous=(await self.call("block",{"block_id":selected["prev_hash"]}))["header"]
+        previous=await self.predecessor(selected)
         finalized=await self.block()
         if selected["hash"]!=block["hash"] or str(selected["timestamp_nanosec"])!=str(block["timestamp_ns"]):
             raise ValueError("Recorded block differs from archival RPC")
+        if str(previous["timestamp_nanosec"])!=str(block["previous_timestamp_ns"]):
+            raise ValueError("Recorded predecessor timestamp differs from archival RPC")
         if selected["height"]>finalized["height"] or not int(previous["timestamp_nanosec"])<target_seconds*10**9<=int(selected["timestamp_nanosec"]):
             raise ValueError("Selected block is not the first finalized block at target")
         return True
@@ -100,7 +124,7 @@ class NearRPC:
             else:
                 high = mid
         selected = await at_or_after(low)
-        previous = (await self.call("block", {"block_id": selected["prev_hash"]}))["header"]
+        previous = await self.predecessor(selected)
         if not int(previous["timestamp_nanosec"]) < target <= int(selected["timestamp_nanosec"]):
             raise ValueError("Historical predecessor proof failed")
         return {"height": selected["height"], "hash": selected["hash"], "timestamp_ns": str(selected["timestamp_nanosec"]),

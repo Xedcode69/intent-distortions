@@ -276,7 +276,18 @@ async def replay_week(plan, base, directory, *, action="run", rpc=None, collecto
             client = collector or Collector(base.near_intents_explorer_url, base.near_intents_partner_jwt)
             end = (int(block["timestamp_ns"]) + 10**9 - 1) // 10**9
             started = int(clock())
-            raw, source = await client.collect(plan.start, end, cfg.collector_page_size)
+            pages = rows = 0
+            last_progress = time.monotonic()
+            def collected_page(page):
+                nonlocal pages, rows, last_progress
+                pages += 1; rows += len(page)
+                if pages == 1 or time.monotonic() - last_progress >= 30:
+                    progress(f"Explorer capture: {pages} pages, {rows} received rows; pagination continues until complete")
+                    last_progress = time.monotonic()
+            if collector is None:
+                raw, source = await client.collect(plan.start, end, cfg.collector_page_size, on_page=collected_page)
+            else:
+                raw, source = await client.collect(plan.start, end, cfg.collector_page_size)
             if source.get("complete") is not True:
                 raise ValueError("Incomplete Explorer capture cannot be replayed")
             records = snapshot(raw, plan.start, end, start_ns=plan.start * 10**9, end_ns=int(block["timestamp_ns"]))

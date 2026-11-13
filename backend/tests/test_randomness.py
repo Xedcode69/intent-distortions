@@ -58,3 +58,39 @@ async def test_rpc_retry_after_cannot_hold_a_replay_open_indefinitely():
     async with httpx.AsyncClient(transport=httpx.MockTransport(lambda request:httpx.Response(429,headers={"Retry-After":"3600"}))) as client:
         with pytest.raises(RuntimeError,match="time budget"):
             await NearRPC("https://unit.test",client=client,budget_seconds=.05).call("status",{})
+
+
+@pytest.mark.parametrize("declared_parent", [False, True])
+async def test_height_only_archive_verifies_exact_parent_across_skipped_height(declared_parent):
+    class HeightOnly(NearRPC):
+        def __init__(self): self.probes=[]
+        async def block(self,height=None):
+            height=12 if height is None else height
+            self.probes.append(height)
+            if height==9:raise MissingBlock("Skipped height")
+            parent=8 if height==10 else height-1
+            header={"height":height,"hash":f"hash-{height}","prev_hash":f"hash-{parent}","timestamp_nanosec":str(height*10**9+2)}
+            if declared_parent:header["prev_height"]=parent
+            return header
+        async def call(self,method,params):
+            assert isinstance(params["block_id"],str)
+            raise MissingBlock("Hash index unavailable")
+    rpc=HeightOnly()
+    block=await rpc.first_block_at(10)
+    assert block["height"]==10 and block["previous_timestamp_ns"]==str(8*10**9+2)
+    assert await rpc.verify_selected_block(block,10)
+    with pytest.raises(ValueError,match="predecessor timestamp"):
+        await rpc.verify_selected_block({**block,"previous_timestamp_ns":"0"},10)
+
+
+@pytest.mark.parametrize("hash_unavailable", [False, True])
+async def test_predecessor_rejects_unlinked_provider_responses(hash_unavailable):
+    class WrongParent(NearRPC):
+        def __init__(self):pass
+        async def block(self,height=None):
+            return {"height":height,"hash":"different-parent","timestamp_nanosec":str(height*10**9)}
+        async def call(self,method,params):
+            if hash_unavailable:raise MissingBlock("Hash index unavailable")
+            return {"header":await self.block(8)}
+    with pytest.raises(ValueError,match="predecessor"):
+        await WrongParent().predecessor({"height":10,"prev_hash":"expected-parent"})
