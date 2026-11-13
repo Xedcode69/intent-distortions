@@ -43,7 +43,7 @@ async def lifespan(app):
     if task:
         task.cancel()
 
-app = FastAPI(title="NEAR ECHOES",version="1.0.0",lifespan=lifespan,
+app = FastAPI(title="Intent Distortions",version="1.0.0",lifespan=lifespan,
               docs_url=None if settings.app_env=="production" else "/docs",redoc_url=None if settings.app_env=="production" else "/redoc")
 app.add_middleware(CORSMiddleware,allow_origins=[settings.cors_origin],allow_methods=["GET","POST"],allow_headers=["Content-Type","Authorization"])
 from .middleware import RequestLimits,remove_demo_routes

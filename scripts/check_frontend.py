@@ -11,7 +11,7 @@ class Assets(HTMLParser):
 base="http://127.0.0.1:3000"
 with urllib.request.urlopen(base,timeout=20) as r:
     assert r.status==200;page=r.read().decode()
-assert "NEAR ECHOES" in page
+assert "Intent Distortions" in page
 parser=Assets();parser.feed(page)
 assert parser.urls,"No Next.js assets found"
 for path in sorted(parser.urls):

@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "NEAR ECHOES redacted public artifacts: private immutable S3, CloudFront OAC, separate read/write policies. No users or access keys are created.",
+  "Description": "Intent Distortions redacted public artifacts: private immutable S3, CloudFront OAC, separate read/write policies. No users or access keys are created.",
   "Resources": {
     "Artifacts": {
       "Type": "AWS::S3::Bucket",

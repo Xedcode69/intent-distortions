@@ -10,4 +10,4 @@ Configure `NEAR_NETWORK`, `NEAR_RPC_URL`, `NEAR_NFT_CONTRACT` and the reviewed `
 
 An unconfigured collection returns `status: not_deployed`, an empty token list and `total: null`. A verified collection returns `status: onchain`, the decimal-string total, the current page and a check timestamp. Invalid accounts or pagination return 422; an unpinned NFT returns 409; unverifiable ownership or provider failure returns a generic 503. Provider URLs and error bodies are not returned. Pagination allows offsets 0–100,000 and limits 1–50.
 
-The collection is limited to NEAR ECHOES NFTs on the site's configured network. Wallet approval, redirect/extension behavior and a funded transaction must still be exercised by the wallet owner during live acceptance; unit tests do not substitute for that flow.
+The collection is limited to Intent Distortions NFTs on the site's configured network. Wallet approval, redirect/extension behavior and a funded transaction must still be exercised by the wallet owner during live acceptance; unit tests do not substitute for that flow.

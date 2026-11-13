@@ -1,4 +1,4 @@
-# NEAR ECHOES educational demo
+# Intent Distortions educational demo
 
 A standalone explanation of the project. Serve this directory over localhost or HTTPS:
 

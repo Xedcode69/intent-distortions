@@ -97,8 +97,8 @@ impl EchoNFT {
     pub fn new(owner_id: AccountId, minter: AccountId) -> Self {
         let metadata = NFTContractMetadata {
             spec: NFT_METADATA_SPEC.into(),
-            name: "NEAR ECHOES".into(),
-            symbol: "ECHO".into(),
+            name: "Intent Distortions".into(),
+            symbol: "ID".into(),
             icon: None,
             base_uri: None,
             reference: None,

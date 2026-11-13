@@ -41,7 +41,7 @@ export function ArtworkStory({demo,image,onComplete}:{demo:HistoricalDemoData;im
   const headings=["Completed journeys. Shared momentum.","A week has its own rhythm.","Movement leaves a network.","Many records. One fixed fingerprint.",demo.artwork.title];
   function selectStep(index:number){setPlaying(false);setElapsed(index*STEP_MS);}
   return <section ref={section} className="artwork-story" aria-label="How this artwork came to be">
-    <header className="story-top"><span className="eyebrow">THE MAKING OF AN ECHO</span><button className="text-link" onClick={onComplete}>View artwork <SkipForward size={14}/></button></header>
+    <header className="story-top"><span className="eyebrow">THE MAKING OF A DISTORTION</span><button className="text-link" onClick={onComplete}>View artwork <SkipForward size={14}/></button></header>
     <div className="story-stage" key={stage}>
       <div className="story-copy"><span className="story-index">0{stage+1} / 05</span><h2 aria-live="polite">{headings[stage]}</h2>
         {stage===0&&<><div className="story-big" aria-label={`${demo.statistics.total_swaps.toLocaleString()} successful records`}><span aria-hidden="true">{format(demo.statistics.total_swaps*progress)}</span></div><p>Unique, successful swap records in the selected interval. Test records and unsuccessful attempts are excluded.</p><span className="story-footnote">Each eligible record contributes to the dataset commitment and seed.</span></>}

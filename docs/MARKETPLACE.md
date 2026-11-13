@@ -1,6 +1,6 @@
 # Marketplace and collection royalties
 
-`/marketplace` is a secondary marketplace for the canonical NEAR ECHOES NFT contract. Listings and escrowed offers are denominated and settled in native NEAR. Successful secondary sales pay **95% to the seller and 5% to the collection royalty pool**. This is independent of the primary auction's 20% treasury / 80% edition-vault allocation. Resales do not refill the edition vault or create additional raffle tickets.
+`/marketplace` is a secondary marketplace for the canonical Intent Distortions NFT contract. Listings and escrowed offers are denominated and settled in native NEAR. Successful secondary sales pay **95% to the seller and 5% to the collection royalty pool**. This is independent of the primary auction's 20% treasury / 80% edition-vault allocation. Resales do not refill the edition vault or create additional raffle tickets.
 
 ## Listings and offers
 

@@ -394,7 +394,7 @@ impl EchoAuction {
                 recipient,
                 token_id.clone(),
                 None,
-                Some("NEAR ECHOES settlement".into()),
+                Some("Intent Distortions settlement".into()),
             )
             .then(
                 ext_self::ext(env::current_account_id())

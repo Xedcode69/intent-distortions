@@ -6,11 +6,11 @@ The deployment target is **Render managed compute/PostgreSQL plus AWS S3/CloudFr
 
 | Service | Access | Persistent state / credentials |
 |---|---|---|
-| `near-echoes-web` | Public HTTPS | Private API host/port only; no signing, AI, Explorer or AWS secrets |
-| `near-echoes-api` | Render private network | PostgreSQL and read-only artifact credential; admin token |
-| `near-echoes-worker` | No incoming traffic | PostgreSQL, write-once artifact credential, Explorer JWT, AI key, optional mounted signing file |
-| `near-echoes-db` | Private network only | Managed PostgreSQL 18; snapshots, releases, observations, effects, receipt index |
-| `near-echoes-explainer` | Separate static URL | Synthetic public teaching assets only; no environment group |
+| `intent-distortions-web` | Public HTTPS | Private API host/port only; no signing, AI, Explorer or AWS secrets |
+| `intent-distortions-api` | Render private network | PostgreSQL and read-only artifact credential; admin token |
+| `intent-distortions-worker` | No incoming traffic | PostgreSQL, write-once artifact credential, Explorer JWT, AI key, optional mounted signing file |
+| `intent-distortions-db` | Private network only | Managed PostgreSQL 18; snapshots, releases, observations, effects, receipt index |
+| `intent-distortions-explainer` | Separate static URL | Synthetic public teaching assets only; no environment group |
 | S3 / CloudFront | Bucket private; redacted artifacts public through CDN | SHA-256 keys, versioning, Object Lock, HTTPS |
 
 The frontend resolves `BACKEND_URL` at runtime through a bounded streaming API route, so the same image works with Render service discovery. It sends the canonical internal Host `echoes-api.internal`, which the API explicitly allows. The proxy rejects demo and admin paths in production and forwards no authorization header. Administrative requests must use a trusted private-network shell/port-forward with the internal Host and bearer token. Public verification/receipt requests have body/rate limits; forwarded client-IP headers are not trusted. Add provider edge rate limits before scaling public traffic.

@@ -23,10 +23,10 @@ def main():
         for error in errors:print(f"Render {list(error.path)}: {error.message}")
         raise SystemExit(1)
     services={service["name"]:service for service in value["services"]}
-    assert services["near-echoes-api"]["type"]=="pserv"
-    assert services["near-echoes-worker"]["numInstances"]==1
-    assert services["near-echoes-explainer"]["runtime"]=="static"
-    assert "envVars" not in services["near-echoes-explainer"]
+    assert services["intent-distortions-api"]["type"]=="pserv"
+    assert services["intent-distortions-worker"]["numInstances"]==1
+    assert services["intent-distortions-explainer"]["runtime"]=="static"
+    assert "envVars" not in services["intent-distortions-explainer"]
     for service in services.values():assert service["autoDeployTrigger"]=="off"
     template=json.loads((ROOT/"deploy/artifacts.cloudformation.json").read_text())
     assert template["Resources"]["Artifacts"]["DeletionPolicy"]=="Retain"

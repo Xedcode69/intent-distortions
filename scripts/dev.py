@@ -22,7 +22,7 @@ try:
     with (data/"backend.log").open("a",encoding="utf-8") as log:
         backend=subprocess.Popen([python,"-m","uvicorn","app.main:app","--host","127.0.0.1","--port","8000"],cwd=root,env=env,stdout=log,stderr=log,creationflags=flags)
         frontend=subprocess.Popen([node,"node_modules/next/dist/bin/next","dev","--hostname","127.0.0.1"],cwd=root/"frontend",env=env,creationflags=flags)
-        print("NEAR ECHOES: http://127.0.0.1:3000 — Ctrl+C stops both services.",flush=True)
+        print("Intent Distortions: http://127.0.0.1:3000 — Ctrl+C stops both services.",flush=True)
         result=frontend.wait()
         if result:raise SystemExit(result)
 except KeyboardInterrupt:

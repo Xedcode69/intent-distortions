@@ -416,7 +416,7 @@ async def replay_week(plan, base, directory, *, action="run", rpc=None, collecto
         tracker.update(status=report["status"] if report["status"] in ("passed","failed","blocked","interrupted") else "idle",
                        stage="complete" if report["status"] == "passed" else stage)
         _write(directory / "report.json", report)
-        lines = ["# NEAR ECHOES historical replay test", "", f"Status: {report['status']}",
+        lines = ["# Intent Distortions historical replay test", "", f"Status: {report['status']}",
                  f"Sunday: {plan.sunday}; mode: historical_replay; AI policy: {plan.ai}", "",
                  "This run does not sign transactions or prove production as-of-freeze membership.", ""]
         for name, result in report["stages"].items():

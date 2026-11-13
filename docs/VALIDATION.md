@@ -1,6 +1,6 @@
 # Release validation — 2026-11-12
 
-Latest interface validation: [original gallery redesign, 14 November 2026](reports/ui-redesign-2026-11-14.md), followed by [wallet connection and personal collection](reports/wallets-2026-11-14.md). Earlier reports below remain historical evidence.
+Latest update: [Intent Distortions branding and current contract hashes](reports/branding-2026-11-14.md). Earlier interface evidence: [original gallery redesign](reports/ui-redesign-2026-11-14.md) and [wallet connection and personal collection](reports/wallets-2026-11-14.md). Earlier reports below remain historical evidence.
 
 **Status: managed-cloud production candidate plus a separate educational demo. Live acceptance and independent security review are outstanding. No cloud resources/contracts were deployed and no real financial outcome is claimed.**
 

@@ -3,7 +3,7 @@
 previews:
   generation: "off"
 envVarGroups:
-  - name: echoes-protocol
+  - name: intent-distortions-protocol
     envVars:
       - key: APP_ENV
         value: production
@@ -71,7 +71,7 @@ envVarGroups:
         sync: false
 services:
   - type: pserv
-    name: near-echoes-api
+    name: intent-distortions-api
     runtime: docker
     region: frankfurt
     plan: 1c-2g
@@ -82,7 +82,7 @@ services:
     dockerCommand: /app/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-proxy-headers
     preDeployCommand: /app/.venv/bin/alembic -c backend/alembic.ini upgrade head
     envVars:
-      - fromGroup: echoes-protocol
+      - fromGroup: intent-distortions-protocol
       - key: SERVICE_ROLE
         value: api
       - key: MARKETPLACE_CROSSCHAIN_ENABLED
@@ -91,14 +91,14 @@ services:
         sync: false
       - key: DATABASE_URL
         fromDatabase:
-          name: near-echoes-db
+          name: intent-distortions-db
           property: connectionString
       - key: S3_ACCESS_KEY_ID
         sync: false
       - key: S3_SECRET_ACCESS_KEY
         sync: false
   - type: worker
-    name: near-echoes-worker
+    name: intent-distortions-worker
     runtime: docker
     region: frankfurt
     plan: 1c-2g
@@ -108,12 +108,12 @@ services:
     dockerContext: .
     dockerCommand: /app/.venv/bin/python -m app.workers.production
     envVars:
-      - fromGroup: echoes-protocol
+      - fromGroup: intent-distortions-protocol
       - key: SERVICE_ROLE
         value: worker
       - key: DATABASE_URL
         fromDatabase:
-          name: near-echoes-db
+          name: intent-distortions-db
           property: connectionString
       - key: NEAR_INTENTS_PARTNER_JWT
         sync: false
@@ -126,7 +126,7 @@ services:
       - key: SIGNER_KEY_FILE
         value: /etc/secrets/near-worker.json
   - type: web
-    name: near-echoes-web
+    name: intent-distortions-web
     runtime: docker
     region: frankfurt
     plan: 0.5c-512mb
@@ -140,10 +140,10 @@ services:
       - key: BACKEND_URL
         fromService:
           type: pserv
-          name: near-echoes-api
+          name: intent-distortions-api
           property: hostport
   - type: web
-    name: near-echoes-explainer
+    name: intent-distortions-explainer
     runtime: static
     autoDeployTrigger: "off"
     buildCommand: node scripts/package-demo.mjs
@@ -159,7 +159,7 @@ services:
         name: Referrer-Policy
         value: no-referrer
 databases:
-  - name: near-echoes-db
+  - name: intent-distortions-db
     region: frankfurt
     plan: basic-1gb
     postgresMajorVersion: "18"

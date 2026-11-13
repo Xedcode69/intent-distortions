@@ -1,4 +1,4 @@
-"""Public, read-only ownership for the configured NEAR ECHOES collection."""
+"""Public, read-only ownership for the configured Intent Distortions collection."""
 import asyncio
 import re
 import time

@@ -26,7 +26,7 @@ def package(name,files,kind):
 demo_names=["index.html","styles.css","app.mjs","core.mjs","assets/artwork.png","assets/artwork.svg","assets/thumbnail.webp","assets/scene.json","assets/example.json"]
 demo={name:(ROOT/"demo"/name).read_bytes() for name in demo_names}
 demo["README.txt"]=b"Standalone educational demo. Serve this directory on localhost or HTTPS. All records and blockchain evidence are synthetic; no credentials, wallet or API required. See the repository's demo/README.md for verification instructions.\n"
-package("near-echoes-demo.zip",demo,"static_educational_demo")
+package("intent-distortions-demo.zip",demo,"static_educational_demo")
 
 files={}
 for folder in ["backend","frontend","signer","contracts","deploy","docs"]:
@@ -41,7 +41,7 @@ for name in ["render.yaml","pyproject.toml","uv.lock",".python-version",".docker
     path=ROOT/name
     if path.is_file():files[name]=path.read_bytes()
 blueprint=yaml.safe_load(files["render.yaml"])
-blueprint["services"]=[service for service in blueprint["services"] if service["name"]!="near-echoes-explainer"]
+blueprint["services"]=[service for service in blueprint["services"] if service["name"]!="intent-distortions-explainer"]
 files["render.yaml"]=yaml.safe_dump(blueprint,sort_keys=False).encode()
 for name in ["production_preflight.py","verify_epoch.py","export_artwork.py","validate_deployment.py","test_historical_week.py","serve_replay.py","publish_replay_demo.py","build_contracts.py","test_economy_sandbox.ps1"]:
     files[f"scripts/{name}"]=(ROOT/"scripts"/name).read_bytes()
@@ -50,5 +50,5 @@ for name in ["echo_nft.wasm","echo_auction.wasm","echo_vault.wasm","echo_market.
     path=ROOT/"contracts/target/wasm32-unknown-unknown/release"/name
     if not path.exists():raise SystemExit("Build both current contract WASM artifacts before packaging")
     files[f"artifacts/{name}"]=path.read_bytes()
-files["README.md"]=b"# NEAR ECHOES managed-cloud release candidate\n\nRead docs/managed-cloud.md and docs/VALIDATION.md before deployment. Source, lockfiles, contract WASM candidates, environment template and deployment definitions are included. No credentials or runtime data are packaged. The educational demo is distributed separately; this archive's Render Blueprint contains only production services. This archive has not passed live credentialed acceptance or independent security review and is not mainnet-ready.\n"
-package("near-echoes-managed-cloud.zip",files,"managed_cloud_source_and_wasm")
+files["README.md"]=b"# Intent Distortions managed-cloud release candidate\n\nRead docs/managed-cloud.md and docs/VALIDATION.md before deployment. Source, lockfiles, contract WASM candidates, environment template and deployment definitions are included. No credentials or runtime data are packaged. The educational demo is distributed separately; this archive's Render Blueprint contains only production services. This archive has not passed live credentialed acceptance or independent security review and is not mainnet-ready.\n"
+package("intent-distortions-managed-cloud.zip",files,"managed_cloud_source_and_wasm")

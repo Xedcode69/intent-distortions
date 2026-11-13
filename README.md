@@ -1,4 +1,4 @@
-# NEAR ECHOES — The Weekly Genesis
+# Intent Distortions — The Weekly Genesis
 
 Weekly generative art derived from a committed NEAR Intents dataset, a scheduled drand beacon, a verified historical NEAR block, and the previous artwork hash.
 
@@ -51,7 +51,7 @@ Follow [docs/managed-cloud.md](docs/managed-cloud.md) for environment variables,
 
 Credentials are needed for Explorer, NEAR AI, durable storage and signed publication. The frontend receives only the private API address; the static demo receives none. Chain writes are disabled by default. No credentials have been configured in this workspace.
 
-After building WASM, `uv run --locked python scripts/build_release.py` creates `dist/near-echoes-managed-cloud.zip` and `dist/near-echoes-demo.zip` with per-file hash manifests. The managed source bundle has a production-only Blueprint; the demo is packaged independently. These are candidate deliverables, not evidence of a deployed or audited service.
+After building WASM, `uv run --locked python scripts/build_release.py` creates `dist/intent-distortions-managed-cloud.zip` and `dist/intent-distortions-demo.zip` with per-file hash manifests. The managed source bundle has a production-only Blueprint; the demo is packaged independently. These are candidate deliverables, not evidence of a deployed or audited service.
 
 ## Verification
 
