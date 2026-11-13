@@ -1,19 +1,19 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ArrowUpRight, Menu, X, Wallet, Activity } from "lucide-react";
-import { useState } from "react";
-import { useAPI, type Health } from "@/lib/api";
-import { connectWallet } from "@/lib/wallet";
-const links=[["/","Studio"],["/drops","Drops"],["/gallery","Collection"],["/marketplace","Market"],["/demo","Demo"],["/economy","Economy"]];
-export function Mark(){return <svg width="34" height="34" viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M7 30V10l26 20V10M14 10v20M26 10v20" stroke="currentColor" strokeWidth="2"/><circle cx="20" cy="20" r="18" stroke="currentColor" opacity=".35"/></svg>;}
-export function Shell({children}:{children:React.ReactNode}) {
- const path=usePathname(), [open,setOpen]=useState(false),[message,setMessage]=useState("");
+import {usePathname} from "next/navigation";
+import {ArrowUpRight,Menu,X,Wallet} from "lucide-react";
+import {useState,useEffect} from "react";
+import {useAPI,type Health} from "@/lib/api";
+import {connectWallet} from "@/lib/wallet";
+const links=[["/drops","Drops"],["/gallery","Collection"],["/marketplace","Market"],["/demo","The story"],["/economy","Rewards"]];
+export function Mark(){return <svg width="32" height="32" viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M6 29V11L34 29V11M14 11V29M26 11V29" stroke="currentColor" strokeWidth="2.5"/><path d="M1 1H39V39H1Z" stroke="currentColor" strokeWidth="1.5"/></svg>;}
+export function Shell({children}:{children:React.ReactNode}){
+ const path=usePathname(),[open,setOpen]=useState(false),[message,setMessage]=useState("");
  const {data:health}=useAPI<Health>("/health");
- const demoSection=path==="/demo", readOnly=demoSection||health?.mode==="historical_replay";
+ const readOnly=path==="/demo"||health?.mode!=="live";
+ useEffect(()=>{if(!open)return;const close=(e:KeyboardEvent)=>{if(e.key==="Escape")setOpen(false);};document.addEventListener("keydown",close);return()=>document.removeEventListener("keydown",close);},[open]);
  async function wallet(){try{await connectWallet(health?.contracts.auction||"",health?.network||"testnet");setMessage("");}catch(e){setMessage((e as Error).message);}}
- return <><header className="header"><Link href="/" className="brand" aria-label="NEAR ECHOES home"><Mark/><span>NEAR <b>ECHOES</b></span></Link><nav aria-label="Main navigation" className={open?"nav open":"nav"}>{links.map(([href,label])=><Link key={href} href={href} onClick={()=>setOpen(false)} className={path===href?"selected":""}>{label}{href==="/drops"&&<span className="live-dot"/>}</Link>)}</nav><div className="nav-actions"><span className="network"><span/> {demoSection?"read-only demo":health?.network||"testnet"}</span><button className="wallet" disabled={readOnly} onClick={wallet}><Wallet size={15}/><span>{readOnly?"Read-only replay":"Connect wallet"}</span></button><button className="mobile-menu" aria-label={open?"Close navigation":"Open navigation"} onClick={()=>setOpen(!open)}>{open?<X/>:<Menu/>}</button></div></header>
+ return <><a href="#main-content" className="skip-link">Skip to content</a><header className="header"><Link href="/" className="brand" aria-label="NEAR ECHOES home"><Mark/><span>NEAR<span className="brand-echoes">ECHOES</span></span></Link><nav id="site-navigation" aria-label="Main navigation" className={open?"nav open":"nav"}>{links.map(([href,label])=><Link key={href} href={href} onClick={()=>setOpen(false)} aria-current={path===href?"page":undefined} className={path===href?"selected":""}>{label}{href==="/drops"&&<span className="nav-dot"/>}</Link>)}</nav><div className="nav-actions"><span className="site-status"><i/>{readOnly?"Preview":health?.network||"Connecting"}</span><button className="wallet" aria-label={readOnly?"Read-only preview":"Connect wallet"} disabled={readOnly} onClick={wallet}><Wallet size={14}/><span>{readOnly?"Read-only":"Connect wallet"}</span></button><button className="mobile-menu" aria-label={open?"Close navigation":"Open navigation"} aria-controls="site-navigation" aria-expanded={open} onClick={()=>setOpen(!open)}>{open?<X/>:<Menu/>}</button></div></header>
  {message&&<div className="notice" role="status">{message}<button aria-label="Dismiss notification" onClick={()=>setMessage("")}><X size={16}/></button></div>}
- <div className="mode-strip"><span><Activity size={12}/>{demoSection?"DEMO · HISTORICAL REPLAY":health?.mode==="demo"?"DEMO STUDIO · SYNTHETIC DATA":health?.mode==="historical_replay"?"HISTORICAL REPLAY · READ-ONLY":health?health.mode.toUpperCase():"CONNECTING TO STUDIO"}</span><span>{demoSection?"A saved real-data demonstration. Availability and evidence are shown below.":health?.mode==="demo"?"A reproducible preview. No real swaps, mints, or bids.":health?.mode==="historical_replay"?"Past swap records observed at capture time. No live auction.":"One canonical edition per weekly checkpoint."}<ArrowUpRight size={12}/></span></div>
- <main>{children}</main><footer><Link className="brand" href="/"><Mark/><span>NEAR <b>ECHOES</b></span></Link><p>One week. One block. One artwork. Never repeated.</p><span>BUILT ON NEAR <ArrowUpRight size={13}/></span></footer></>;
+ <main id="main-content">{children}</main><footer className="site-footer"><div className="footer-top"><p>A little history.<br/>A lasting impression.</p><div><Link href="/drops">Next drop <ArrowUpRight size={15}/></Link><Link href="/demo">How it works <ArrowUpRight size={15}/></Link><Link href="/marketplace">Collect an echo <ArrowUpRight size={15}/></Link></div></div><Link href="/" className="footer-wordmark" aria-label="NEAR ECHOES home">ECHOES<span>↗</span></Link><div className="footer-bottom"><span>ONE WEEK. ONE ORIGINAL.</span><span>BUILT ON NEAR · {health?.mode==="live"?health.network:"READ-ONLY PREVIEW"}</span></div></footer></>;
 }

@@ -8,11 +8,11 @@ type Progress = {status:string;stage:string;sunday:string|null;start:number|null
 const names:Record<string,string>={waiting:"Waiting to start",beacon:"Verifying randomness",checkpoint:"Verifying the historical block",capture:"Collecting historical records",art_direction:"Generating artwork",verification:"Verifying artwork",export:"Preparing the result",complete:"Replay verified"};
 const elapsed=(seconds:number)=>`${Math.floor(seconds/3600)}h ${Math.floor(seconds%3600/60)}m ${seconds%60}s`;
 
-export function ReplayProgress(){
+export function ReplayProgress({compact=false}:{compact?:boolean}={}){
   const {data,error}=useQuery<Progress>({queryKey:["replay-progress"],queryFn:()=>api<Progress>("/replay/progress"),refetchInterval:5000,retry:false});
   if(!data||data.status==="idle")return null;
   const title=names[data.stage]||"Preparing historical replay";
-  return <section className="replay-progress" aria-label="Historical replay progress">
+  const content=<section className="replay-progress" aria-label="Historical replay progress">
     <div className="replay-progress-heading"><div><span className="eyebrow">HISTORICAL RUN {data.sunday}</span><h2>{title}</h2></div><span className="pill">{data.status.replaceAll("_"," ")}</span></div>
     <div className="replay-progress-track" role="progressbar" aria-label="Historical record collection" aria-valuemin={0} aria-valuemax={100} aria-valuenow={data.collection_complete?100:undefined} aria-valuetext={data.collection_complete?"Collection complete":`${data.received_rows.toLocaleString()} rows received; total not yet available`}><span className={data.collection_complete?"replay-progress-fill complete":"replay-progress-fill indeterminate"}/></div>
     <div className="replay-progress-numbers" aria-live="polite"><span><b>{data.received_rows.toLocaleString()}</b> rows received</span><span>{data.pages.toLocaleString()} pages</span><span>{elapsed(data.elapsed_seconds)} elapsed</span></div>
@@ -22,4 +22,5 @@ export function ReplayProgress(){
     {(data.stale||error)&&<p role="status" className="demo-note">Progress has not refreshed recently. The last reported count is shown above.</p>}
     {data.status==="failed"&&<p role="status">The run stopped before completion. Saved inputs are retained for diagnosis and retry.</p>}
   </section>;
+  return compact&&data.status==="passed"?<details className="completed-replay"><summary>Replay complete · {data.eligible_records?.toLocaleString()??data.total_records?.toLocaleString()} records</summary>{content}</details>:content;
 }

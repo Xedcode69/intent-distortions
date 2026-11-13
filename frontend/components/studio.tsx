@@ -20,7 +20,7 @@ export function Countdown({target}:{target:number}) {
  return <span className="countdown">{[Math.floor(seconds/86400),Math.floor(seconds%86400/3600),Math.floor(seconds%3600/60)].map((n,i)=><span key={i}>{now?String(n).padStart(2,"0"):"--"}<small>{["DAYS","HOURS","MINS"][i]}</small></span>)}</span>;
 }
 export { ProductionHome as Home } from "./production-home";
-export function ArtCard({art:a}:{art:Art}) {return <Link href={`/artwork/${a.id}`} className="art-card"><div className="card-image"><img src={a.thumbnail} alt={a.title} loading="lazy"/><span className="card-badge">{a.mode.toUpperCase()} · 1/1</span><span className="card-arrow"><ArrowUpRight size={20}/></span></div><div className="card-caption"><span className="overline">{a.edition} · {date(a.end)}</span><h3>{a.title}</h3><p>{a.stats.total_swaps} contributing records <span>{a.nft.status.replaceAll("_"," ")}</span></p></div></Link>;}
+export function ArtCard({art:a}:{art:Art}) {return <Link href={`/artwork/${a.id}`} className="art-card"><div className="card-image"><img src={a.thumbnail} alt={a.title} loading="lazy"/><span className="card-badge">{a.mode==="live"?"ONE OF ONE":a.mode==="historical_replay"?"HISTORICAL STUDY":"DEMO STUDY"}</span><span className="card-arrow"><ArrowUpRight size={21}/></span></div><div className="card-caption"><span className="overline">{a.edition} · {date(a.end)}</span><h3>{a.title}</h3><p>{a.composition.replaceAll("_"," ")}<span>{a.nft.status==="minted"?"Onchain":"Artwork study"}</span></p></div></Link>;}
 
 type Manifest=ArtworkScene & {mapping:Record<string,unknown>};
 function EditionAnimation({art}:{art:Art}){
