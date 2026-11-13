@@ -8,7 +8,7 @@ from zipfile import ZipFile,ZipInfo,ZIP_DEFLATED
 
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/"dist";OUT.mkdir(exist_ok=True)
-EXCLUDED={"node_modules",".next","target","__pycache__",".pytest_cache",".venv",".git",".tools",".vendor","data","tests",".aws",".codex",".agents"}
+EXCLUDED={"node_modules",".next",".next-replay","target","__pycache__",".pytest_cache",".venv",".git",".tools",".vendor","data","tests",".aws",".codex",".agents"}
 
 def digest(data):return hashlib.sha256(data).hexdigest()
 
@@ -37,13 +37,13 @@ for folder in ["backend","frontend","signer","contracts","deploy","docs"]:
             path=Path(directory)/name;files[path.relative_to(ROOT).as_posix()]=path.read_bytes()
             if folder=="signer" and name not in ("sign.mjs","package.json","package-lock.json"):
                 del files[path.relative_to(ROOT).as_posix()]
-for name in ["render.yaml","pyproject.toml","uv.lock",".python-version",".dockerignore",".env.production.example","LICENSE"]:
+for name in ["render.yaml","pyproject.toml","uv.lock",".python-version",".dockerignore",".env.production.example",".env.replay.example","LICENSE"]:
     path=ROOT/name
     if path.is_file():files[name]=path.read_bytes()
 blueprint=yaml.safe_load(files["render.yaml"])
 blueprint["services"]=[service for service in blueprint["services"] if service["name"]!="near-echoes-explainer"]
 files["render.yaml"]=yaml.safe_dump(blueprint,sort_keys=False).encode()
-for name in ["production_preflight.py","verify_epoch.py","export_artwork.py","validate_deployment.py"]:
+for name in ["production_preflight.py","verify_epoch.py","export_artwork.py","validate_deployment.py","test_historical_week.py","serve_replay.py","publish_replay_demo.py"]:
     files[f"scripts/{name}"]=(ROOT/"scripts"/name).read_bytes()
 for name in ["echo_nft.wasm","echo_auction.wasm"]:
     path=ROOT/"contracts/target/wasm32-unknown-unknown/release"/name

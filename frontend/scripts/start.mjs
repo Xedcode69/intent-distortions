@@ -1,7 +1,10 @@
 import { cpSync, mkdirSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 const root=new URL("../",import.meta.url);
-mkdirSync(new URL(".next/standalone/.next/static/",root),{recursive:true});
-cpSync(new URL(".next/static/",root),new URL(".next/standalone/.next/static/",root),{recursive:true});
+const dist=process.env.ECHOES_NEXT_DIST_DIR||".next";
+if(!/^\.[a-z0-9-]+$/.test(dist))throw new Error("Use a dedicated local Next.js build directory");
+const standalone=new URL(`${dist}/standalone/`,root);
+mkdirSync(new URL(`${dist}/static/`,standalone),{recursive:true});
+cpSync(new URL(`${dist}/static/`,root),new URL(`${dist}/static/`,standalone),{recursive:true});
+cpSync(new URL("public/",root),new URL("public/",standalone),{recursive:true});
 process.env.HOSTNAME=process.env.ECHOES_HOST||"127.0.0.1";
-await import(new URL(".next/standalone/server.js",root).href);
+await import(new URL("server.js",standalone).href);

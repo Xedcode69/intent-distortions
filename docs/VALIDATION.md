@@ -38,3 +38,20 @@ Not yet validated: Docker image execution on a working Docker host; full browser
 Browser visual QA remains unavailable: the earlier browser host failed and automatic approval review rejected native Chrome access. Artwork PNG bytes were visually inspected directly. Docker definitions and CI build jobs are supplied, but the workstation Docker daemon was unavailable. These gaps are recorded rather than treated as successful checks.
 
 Run commands and release gates: [README](../README.md), [managed-cloud guide](managed-cloud.md), [contract operations](CONTRACTS.md). The presence of deployment files or keys must never be substituted for live acceptance evidence.
+
+## Historical testing update - 2026-11-13
+
+The isolated historical-week runner and read-only preview are available. See [HISTORICAL_TESTING.md](HISTORICAL_TESTING.md) for configuration, commands, exact intervals and limitations.
+
+| Check | Observed result |
+|---|---|
+| Backend regression suite | **69 passed, 1 skipped**; the PostgreSQL integration test was skipped because its dedicated server was stopped. One upstream Starlette/AnyIO deprecation warning remains. |
+| Historical workflow integration | Mocked Explorer and mainnet RPC, with a real signature-verified beacon: capture, rendering, saved-capture reuse, membership proofs, tamper rejection, repeat-run equality and isolated API/DNA/provenance responses pass. This is a local integration test, not an authenticated real-world capture. |
+| Isolation and failures | Missing JWT/AI prerequisites, incomplete capture, credential error redaction, workspace collector locking, sanitized preview environment and bounded RPC retries tested. |
+| Frontend | Production build and TypeScript pass with the dedicated `.next-replay` directory; historical mode is labelled read-only and wallet connection is disabled. Browser visual testing remains outstanding. |
+| Site Demo section | `/demo` builds as a separate page and responds with HTTP 200 from the standalone server; stylesheet returns 200 and an unpublished demo bundle returns 404. The page uses no production API to load the historical presentation. Publisher tests cover exact asset hashes, public-file allowlisting, repeat publication, rejection of failed reports and altered raw captures, and preservation of the previous public presentation on failure. Only unit-test mocks were published into temporary test directories; no real-data presentation is claimed. |
+| Original frozen fixture | `scripts/verify_epoch.py` passes all commitments, statistics/scene reconstruction and exact PNG replay; the original artwork is unchanged. |
+| Public 8 November preparation | Actual drand round **6624326** passed BLS verification and selected timestamp **1794097030** (2026-11-08 00:17:10 UTC). The public archival RPC could not establish the selected historical block; that stage is recorded as failed. No verified block or real artwork was fabricated. |
+| Real capture and paid AI | Not run: no Explorer partner JWT or NEAR AI credentials are configured. The default mathematical replay explicitly selects deterministic fallback direction. |
+
+A successful historical run proves the recorded dataset-to-artwork process, not provider completeness or which transactions had succeeded at the original Sunday freeze. Real scheduler timing, production capacity, minting, bidding, settlement, managed deployment and independent security review remain separate acceptance gates. No transactions were signed during this update.

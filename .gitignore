@@ -3,11 +3,13 @@
 !.env.example
 !.env.demo.example
 !.env.production.example
+!.env.replay.example
 .env.*.local
 .vendor/
 .tools/
 node_modules/
 .next/
+.next-replay/
 __pycache__/
 .pytest_cache/
 *.pyc

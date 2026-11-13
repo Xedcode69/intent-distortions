@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
+  distDir: process.env.ECHOES_NEXT_DIST_DIR || ".next",
   output: "standalone",
   poweredByHeader:false,
   async headers(){return [{source:"/:path*",headers:[

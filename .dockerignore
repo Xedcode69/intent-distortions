@@ -9,5 +9,6 @@
 data
 **/node_modules
 **/.next
+**/.next-replay
 **/__pycache__
 contracts/target

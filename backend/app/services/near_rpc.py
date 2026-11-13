@@ -7,11 +7,21 @@ class MissingBlock(ValueError):
     pass
 
 class NearRPC:
-    def __init__(self, url):
+    def __init__(self, url, *, client=None, budget_seconds=90):
         self.url = url
+        self.client = client
+        self.budget_seconds = budget_seconds
 
     async def call(self, method, params):
-        async with httpx.AsyncClient(timeout=30) as client:
+        try:
+            async with asyncio.timeout(self.budget_seconds):
+                return await self._call(method,params)
+        except TimeoutError:
+            raise RuntimeError("NEAR RPC time budget exhausted; configure a healthy provider") from None
+
+    async def _call(self, method, params):
+        async with httpx.AsyncClient(timeout=30) as owned:
+            client=self.client or owned
             for attempt in range(6):
                 response = await client.post(self.url, json={"jsonrpc": "2.0", "id": "echoes", "method": method, "params": params})
                 if response.status_code==429 or response.status_code>=500:
@@ -68,7 +78,19 @@ class NearRPC:
                 except MissingBlock:
                     continue
             raise ValueError("Missing historical block: archival provider required")
-        low, high = 1, latest["height"]
+        # Bracket backwards from the tip. Recent-week replays should not query
+        # years-old midpoint blocks just to locate a recent cutoff.
+        high=latest["height"]
+        distance=1024
+        while True:
+            low=max(1,latest["height"]-distance)
+            earlier=await at_or_after(low)
+            if int(earlier["timestamp_nanosec"])<target:break
+            if low==1:raise ValueError("Selection target precedes the available chain")
+            high=earlier["height"]
+            distance*=2
+            await asyncio.sleep(.6)
+        low=earlier["height"]+1
         while low < high:
             await asyncio.sleep(.6)
             mid = (low + high)//2

@@ -40,3 +40,21 @@ async def test_block_selection_nanosecond_boundary_and_skipped_height():
     assert r["height"]==4
     assert int(r["previous_timestamp_ns"])<3_000_000_000<=int(r["timestamp_ns"])
     with pytest.raises(ValueError,match="not finalized"):await RPC().first_block_at(10)
+
+async def test_recent_checkpoint_search_does_not_require_ancient_midpoints():
+    class RecentOnly(NearRPC):
+        def __init__(self): self.probes=[]
+        async def block(self,height=None):
+            height=1_000_000 if height is None else height
+            self.probes.append(height)
+            if height<900_000:raise AssertionError("An ancient midpoint was queried for a recent target")
+            return {"height":height,"hash":str(height),"prev_hash":str(height-1),"timestamp_nanosec":str(height*10**9+2)}
+        async def call(self,method,params):return {"header":await self.block(int(params["block_id"]))}
+    rpc=RecentOnly();block=await rpc.first_block_at(999_000)
+    assert block["height"]==999_000 and min(rpc.probes)>=900_000
+
+async def test_rpc_retry_after_cannot_hold_a_replay_open_indefinitely():
+    import httpx
+    async with httpx.AsyncClient(transport=httpx.MockTransport(lambda request:httpx.Response(429,headers={"Retry-After":"3600"}))) as client:
+        with pytest.raises(RuntimeError,match="time budget"):
+            await NearRPC("https://unit.test",client=client,budget_seconds=.05).call("status",{})

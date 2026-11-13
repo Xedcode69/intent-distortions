@@ -10,3 +10,5 @@ Use **uv** for all Python dependency and virtual-environment management.
 - Verify Python changes with `uv run --locked pytest backend/tests -q` and, for renderer/provenance changes, `uv run --locked python scripts/verify_epoch.py`.
 
 Frontend dependencies continue to use npm; Rust dependencies continue to use Cargo.
+
+After completing and validating project changes, create a Git commit as requested by the owner. Include only the intended project changes; never commit credentials, raw captures, private replay state or unrelated files. Prepared public demo assets may be committed after the publisher's verification and allowlist checks pass.

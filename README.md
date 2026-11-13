@@ -7,6 +7,7 @@ The repository now contains **two separate applications**:
 | Application | Purpose | Runtime |
 |---|---|---|
 | Production application | Authenticated ingestion, fixed freeze orchestration, recorded NEAR AI direction, deterministic art, NFT publication, auctions and recovery | Next.js + private FastAPI + one background worker + managed PostgreSQL + S3/CloudFront |
+| Historical Demo section (`/demo`) | Show a completed real-data replay, its recorded layers and integrity evidence | Static allowlisted assets served by the main Next.js site; unavailable until a real replay passes and is prepared |
 | [Educational demo](demo/README.md) | Explain records → checkpoint → DNA → artwork → auction → verification using synthetic data | Static HTML/CSS/JavaScript; no API, accounts, credentials or wallet |
 
 **Release status: production candidate, pending live acceptance.** The code builds and local tests pass. No cloud resources or contracts have been deployed. No real Explorer swap capture, paid AI generation, real mint, bids or settlement have been executed. Mainnet readiness requires recorded testnet acceptance and independent contract/security review. See [current validation evidence](docs/VALIDATION.md) and [managed deployment guide](docs/managed-cloud.md).
@@ -51,6 +52,10 @@ Credentials are needed for Explorer, NEAR AI, durable storage and signed publica
 After building WASM, `uv run --locked python scripts/build_release.py` creates `dist/near-echoes-managed-cloud.zip` and `dist/near-echoes-demo.zip` with per-file hash manifests. The managed source bundle has a production-only Blueprint; the demo is packaged independently. These are candidate deliverables, not evidence of a deployed or audited service.
 
 ## Verification
+
+To test real records from a previous week, follow [the historical testing workflow](docs/HISTORICAL_TESTING.md). Start with `uv run --locked python scripts/test_historical_week.py --sunday 2026-11-08 --check`; a real capture requires the Explorer JWT and historical RPC access. The runner isolates state, verifies/replays the artwork and writes a stage-by-stage report without signing transactions.
+
+After that test passes, `uv run --locked python scripts/publish_replay_demo.py <report.json>` prepares the main site's separate `/demo` section from the actual artwork and aggregate evidence. Visitors need no credentials. The publisher verifies the frozen result and excludes raw captures, per-record snapshots, provider URLs and credentials; it does not deploy. The page labels fallback versus real NEAR AI direction and never treats the replay as a completed NFT auction.
 
 ```powershell
 uv run --locked pytest backend/tests -q

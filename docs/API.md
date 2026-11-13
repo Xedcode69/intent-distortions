@@ -2,6 +2,8 @@
 
 Interactive schema: `/docs` in development; docs and demo routes are disabled in production. Routes below start with `/api/v1`; database readiness is separately available at `/readyz`.
 
+The main frontend's `/demo` page is a separate read-only historical showcase backed by prepared static public assets. It does not use the development-only `/api/v1/demo/*` generation endpoints and is available in the production frontend without enabling those endpoints.
+
 | Resource | Routes |
 |---|---|
 | Health/configuration | `GET /health`, `/protocol` (no secret values) |

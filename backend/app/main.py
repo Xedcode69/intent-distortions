@@ -89,8 +89,8 @@ def local_demo(request: Request):
 @app.get("/api/v1/health")
 def health():
     return {"status":"ok","mode":settings.execution_mode,"network":settings.near_network,
-            "integrations":{"explorer":"worker_managed" if settings.app_env=="production" else "configured" if settings.near_intents_partner_jwt else "credentials_required",
-            "near_ai":"worker_managed" if settings.app_env=="production" else "configured" if settings.near_ai_api_key else "deterministic_fallback",
+            "integrations":{"explorer":"recorded_capture" if settings.execution_mode=="historical_replay" else "worker_managed" if settings.app_env=="production" else "configured" if settings.near_intents_partner_jwt else "credentials_required",
+            "near_ai":"recorded_direction" if settings.execution_mode=="historical_replay" else "worker_managed" if settings.app_env=="production" else "configured" if settings.near_ai_api_key else "deterministic_fallback",
             "nft":"configured" if settings.near_nft_contract else "not_deployed", "auction":"configured" if settings.near_auction_contract else "not_deployed"},
             "contracts":{"nft":settings.near_nft_contract,"auction":settings.near_auction_contract}}
 
@@ -137,6 +137,12 @@ def epochs(limit:int=50,offset:int=0):
 
 @app.get("/api/v1/epochs/current")
 def current():
+    if settings.execution_mode=="historical_replay":
+        with factory() as db:summary=db.get(Job,"historical-replay-summary")
+        if summary:return summary.payload
+        return {"mode":"historical_replay","status":"replay_not_loaded","next_selection":sunday_schedule(),
+                "selected_block":None,"epoch_number":None,"indexed_records":0,"freeze_at":None,
+                "collection":"historical_replay","schedule_timezone":"UTC"}
     if settings.execution_mode=="live":
         with factory() as db:
             r=db.scalar(select(Release).where(Release.state!="settled").order_by(Release.number).limit(1))
