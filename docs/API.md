@@ -21,6 +21,7 @@ Local historical mode additionally exposes `GET /api/v1/replay/progress`: allowl
 | Receipt indexing | `POST /receipts` with transaction hash/sender; independently verified against finalized configured-contract outcomes |
 | Marketplace | `GET /marketplace`, `/marketplace/tokens`, `/marketplace/tokens/{token-id}`, `/marketplace/listings`, `/marketplace/offers`, `/marketplace/balances/{account}`, `/marketplace/funding/{account}` |
 | Holder royalties | `GET /marketplace/royalties`, `/marketplace/royalties/{cycle}/shares` |
+| Wallet collection | `GET /wallets/{account-id}/collection?offset=0&limit=20` |
 | Cross-chain funding | `GET /marketplace/crosschain/tokens`, `POST /marketplace/crosschain/quote`, `GET /marketplace/crosschain/status` (enabled mainnet only) |
 
 Block verification input: `{ "epoch":1, "sunday_start":1794096000, "beacon":{...} }`. The signature and scheduled round are recomputed. This endpoint returns the selected timestamp; block/finality checking is a separate archival RPC operation.

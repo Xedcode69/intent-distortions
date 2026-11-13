@@ -51,6 +51,8 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 app.add_middleware(RequestLimits,max_bytes=settings.max_request_bytes)
 from .marketplace_api import router as marketplace_router
 app.include_router(marketplace_router)
+from .wallet_api import router as wallet_router
+app.include_router(wallet_router)
 if settings.app_env=="production":app.add_middleware(TrustedHostMiddleware,allowed_hosts=settings.allowed_hosts)
 
 @app.exception_handler(Exception)

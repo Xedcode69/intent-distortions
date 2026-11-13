@@ -1,6 +1,7 @@
 "use client";
 import {useState,useEffect} from "react";
 import Link from "next/link";
+import {useWallet} from "./wallet-provider";
 import {useQuery} from "@tanstack/react-query";
 import {api,useAPI,toYocto,yocto,type Health} from "@/lib/api";
 import {contractAction,walletAccount} from "@/lib/wallet";
@@ -45,9 +46,11 @@ function RoyaltyCycle({m,enabled,act}:{m:RoyaltyMonth;enabled:boolean;act:(metho
  </article>;
 }
 
-export function Marketplace(){
+export function Marketplace({initialToken=""}:{initialToken?:string}){
  const {data:config,error,refetch:refreshConfig}=useAPI<MarketConfig>("/marketplace");const {data:health}=useAPI<Health>("/health");
- const [account,setAccount]=useState(""),[selected,setSelected]=useState(""),[price,setPrice]=useState(""),[offer,setOffer]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
+ const wallet=useWallet(),{account}=wallet;
+ const [selected,setSelected]=useState(initialToken),[price,setPrice]=useState(""),[offer,setOffer]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
+ useEffect(()=>setSelected(initialToken),[initialToken]);
  const [offset,setOffset]=useState(0),[listingOffset,setListingOffset]=useState(0),[offerOffset,setOfferOffset]=useState(0),[royaltyOffset,setRoyaltyOffset]=useState(0);
  const {data:listings,refetch:refreshListings}=useAPI<MarketListing[]>(`/marketplace/listings?offset=${listingOffset}&limit=20`);
  const {data:tokens,refetch:refreshTokens}=useAPI<MarketToken[]>(`/marketplace/tokens?offset=${offset}&limit=20`);
@@ -57,10 +60,10 @@ export function Marketplace(){
  const {data:balance,refetch:refreshBalance}=useQuery({queryKey:["market-balance",account],queryFn:()=>api<{storage_available:string;credit:string;withdrawing:string}>(`/marketplace/balances/${account}`),enabled:!!account&&config?.status==="onchain",refetchInterval:15000});
  const enabled=config?.status==="onchain"&&health?.mode==="live";
  async function refresh(){await Promise.all([refreshConfig(),refreshListings(),refreshTokens(),refreshOffers(),refreshMonths(),...(selected?[refreshDetail()]:[]),...(account?[refreshBalance()]:[])]);}
- async function connect(){try{if(!config?.contract||!health)throw new Error("Marketplace not deployed.");setAccount(await walletAccount(config.contract,health.network));}catch(e){setMessage((e as Error).message);}}
+ async function connect(){await wallet.connect();}
  async function action(method:string,args:Record<string,unknown>,deposit="0",contract=config?.contract){
   if(!enabled||!health||!contract)return;setBusy(true);setMessage("");try{
-   const current=await walletAccount(config!.contract,health.network);setAccount(current);
+   const current=await walletAccount(config!.contract,health.network);if(current!==account)throw new Error("Active wallet changed. Review the artwork before submitting again.");
    const result=await contractAction(contract,health.network,method,args,deposit);setMessage(`Transaction finalized: ${result.transaction.hash}. Check the on-chain result below; a failed sale returns credit instead of transferring the NFT.`);await refresh();
   }catch(e){setMessage((e as Error).message);}finally{setBusy(false);}
  }
@@ -90,7 +93,7 @@ export function Marketplace(){
  <div className="market-actions"><Button disabled={!enabled||busy||!account||owner||!active||!l?.price} onClick={()=>l&&action("buy",{token_id:selected,nonce:l.nonce,rights_hash:detail.snapshot.rights_hash},String(BigInt(l.price!)+1n))}>Buy in NEAR</Button><Button className="subtle" disabled={!enabled||busy||!account} onClick={funding}>Check wallet / unwrap wNEAR</Button></div>
  <label>Offer in NEAR<input inputMode="decimal" value={offer} onChange={e=>setOffer(e.target.value)} placeholder="Offer amount"/></label>
  <Button disabled={!enabled||busy||!account||owner||!active||!offer} onClick={()=>{try{const amount=toYocto(offer);if(BigInt(amount)<=0n)throw new Error("Positive amount required");const expiry=String(BigInt(Math.min(Date.now()+86400000,Number(BigInt(l!.expires_ns)/1000000n)))*1000000n);void action("make_offer",{token_id:selected,nonce:l!.nonce,amount,expires_ns:expiry,rights_hash:detail.snapshot.rights_hash},String(BigInt(amount)+1n));}catch(e){setMessage((e as Error).message);}}}>Escrow offer · expires within 24 hours</Button>
- {l&&<CrossChain listing={l} tokenId={selected} account={account} enabled={!!enabled&&!!config?.crosschain&&!!active} offer={offer} network={health?.network||"testnet"} onMessage={setMessage}/>}
+ {l&&<CrossChain key={`${account}:${selected}:${l.nonce}`} listing={l} tokenId={selected} account={account} enabled={!!enabled&&!!config?.crosschain&&!!active} offer={offer} network={health?.network||"testnet"} onMessage={setMessage}/>}
  {owner&&<details><summary>Sell this artwork</summary><p>Registration and record storage must be funded first. Leave price blank for offers only. Approval lasts seven days. Cancelling the listing leaves other offers refundable; revoke the NFT approval separately if desired.</p><label>Listing price in NEAR<input inputMode="decimal" value={price} onChange={e=>setPrice(e.target.value)} placeholder="Blank = offers only"/></label><div className="market-actions"><Button disabled={!enabled||busy} onClick={()=>{try{if(price&&BigInt(toYocto(price))<=0n)throw new Error("Positive price required");void list();}catch(e){setMessage((e as Error).message);}}}>Approve / update listing</Button>{l&&<Button disabled={!enabled||busy||!!l.sale} onClick={()=>action("cancel_listing",{token_id:selected,nonce:l.nonce},"1")}>Cancel listing</Button>}<Button disabled={!enabled||busy} onClick={()=>action("nft_revoke",{token_id:selected,account_id:config!.contract},"1",health!.contracts.nft)}>Revoke marketplace approval</Button></div></details>}
  </section>}
  <details className="economy-section"><summary>Collection offers · {offers?.length||0} on this page</summary><p>Offers hold NEAR in escrow until accepted, cancelled or released. A changed listing or financial state cannot consume an outdated offer.</p>

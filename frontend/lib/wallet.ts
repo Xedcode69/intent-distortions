@@ -1,16 +1,16 @@
-import type { WalletSelector } from "@near-wallet-selector/core";
 import { actionCreators } from "@near-js/transactions";
-let selector: WalletSelector | undefined;
-export async function connectWallet(contract:string, network:"testnet"|"mainnet") {
-  if(!contract) throw new Error("Auction contract is not configured yet. No wallet transaction will be requested.");
-  const {setupWalletSelector}=await import("@near-wallet-selector/core");
-  const {setupMyNearWallet}=await import("@near-wallet-selector/my-near-wallet");
-  const {setupModal}=await import("@near-wallet-selector/modal-ui");
-  selector ??= await setupWalletSelector({network,modules:[setupMyNearWallet()]});
-  if(!selector.isSignedIn()) setupModal(selector,{contractId:contract}).show();
-  return selector;
+import { createWalletSession } from "./wallet-session";
+export const walletSession = createWalletSession(async network => {
+  const {createDirectorySession}=await import("./wallet-connector");
+  return createDirectorySession(network);
+}, async selector => {
+  await selector.connect();
+});
+export async function connectWallet(_contract:string, network:"testnet"|"mainnet") {
+  return walletSession.connect(network);
 }
 export async function contractAction(contract:string, network:"testnet"|"mainnet",methodName:string,args:Record<string,unknown>,deposit="0") {
+  if(!contract) throw new Error("Contract is not configured. No wallet transaction will be requested.");
   const selected=await connectWallet(contract,network);
   if(!selected.isSignedIn()) throw new Error("Connect your wallet, then submit again.");
   const wallet=await selected.wallet();

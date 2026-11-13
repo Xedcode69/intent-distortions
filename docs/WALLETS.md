@@ -1,0 +1,13 @@
+# Wallet connection and personal collection
+
+The connection dialog supports Meteor, HOT, Intear, Nightly and NEAR Mobile through NEAR Connect. The menu is restricted to this explicit list drawn from wallet.near.org; MyNearWallet is excluded. Wallets appear only on networks their manifests support. Ethereum and Sweat are not integrated. Sign-in is account-only and requests no contract access key. A contract deployment is not needed to connect. Wallet implementations execute through the connector's sandbox; their current manifests are fetched from the upstream repository. Unlisted injected wallets and custom debug wallet sources cannot be selected by the application. Each transaction still requires its own wallet authorization; connecting in a historical replay does not enable trading, bidding or withdrawals.
+
+The header restores the existing session, displays the active account and offers account switching when the wallet supplies multiple accounts, disconnect and a link to `/my-collection`. The collection gallery also links there. Marketplace actions use the same active session. Account changes reset personal pagination and cross-chain instructions.
+
+`GET /api/v1/wallets/{account-id}/collection` reads the configured collection using `nft_tokens_for_owner` and `nft_supply_for_owner`. It does not scan a partial global token list or require a marketplace deployment. The page refreshes every 15 seconds and links each NFT to its market view. Ownership is public information; the endpoint does not authenticate a user or authorize any action.
+
+Configure `NEAR_NETWORK`, `NEAR_RPC_URL`, `NEAR_NFT_CONTRACT` and the reviewed `EXPECTED_NFT_CODE_HASH` on the backend to read live ownership. The RPC network and deployed code hash must match. No operator signing key is required for these reads. The preview launcher deliberately removes contract configuration: the historical artwork is unminted and is never shown as a wallet-owned NFT.
+
+An unconfigured collection returns `status: not_deployed`, an empty token list and `total: null`. A verified collection returns `status: onchain`, the decimal-string total, the current page and a check timestamp. Invalid accounts or pagination return 422; an unpinned NFT returns 409; unverifiable ownership or provider failure returns a generic 503. Provider URLs and error bodies are not returned. Pagination allows offsets 0–100,000 and limits 1–50.
+
+The collection is limited to NEAR ECHOES NFTs on the site's configured network. Wallet approval, redirect/extension behavior and a funded transaction must still be exercised by the wallet owner during live acceptance; unit tests do not substitute for that flow.
