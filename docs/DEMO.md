@@ -36,6 +36,8 @@ uv run --locked python scripts/testnet_lifecycle.py --minter operator.testnet --
 
 The runner performs real CLI-signed testnet calls, confirms NFT/auction state, registers bidders, submits two bids when the auction has no existing bid, waits for the effective end, settles, verifies winner ownership, and claims the first bidder's losing escrow. It prints actual CLI receipts and RPC results. It never generates a fabricated receipt hash or automatically retries an uncertain signed call. If interrupted after a bid, inspect onchain state; it preserves existing bids on restart instead of blindly submitting them again.
 
-Use the default 1 and 1.1 NEAR bids with the initialization values in CONTRACTS.md. A 60-second demo auction has ten-second anti-sniping extensions; seven-day production rules remain separate. Public content upload, account creation and deployment are prerequisites, not simulated by the runner.
+Use the default 1 and 1.1 NEAR bids with the current `new_economy` initializers in [ECONOMY.md](ECONOMY.md). Economy contracts enforce the actual 24-hour deadline; `--wait-for-end` really waits. They also create/fund the dedicated wallet, and the three November launch editions take the creator-mint path without bidding. Legacy compressed laboratory contracts remain a separate test mode. Public content upload, account creation and deployment are prerequisites, not simulated by the runner.
+
+The historical site includes a separately labelled financial simulator, and the standalone explainer's auction step uses the same 20/80 allocation and early-exit rules. Neither simulates onchain balances in the production API or claims that the saved artwork was auctioned.
 
 No real mint, bids or settlement have been executed yet because credentials are absent. Those steps, real swap provenance and a live AI response remain necessary before claiming the brief's full acceptance criteria or recording a hackathon proof video.

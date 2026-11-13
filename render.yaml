@@ -49,6 +49,14 @@ envVarGroups:
         sync: false
       - key: EXPECTED_AUCTION_CODE_HASH
         sync: false
+      - key: EXPECTED_VAULT_CODE_HASH
+        sync: false
+      - key: ECONOMY_ENABLED
+        value: "true"
+      - key: NEAR_CREATOR_ACCOUNT
+        sync: false
+      - key: NEAR_TREASURY_ACCOUNT
+        sync: false
       - key: NEAR_AI_TEXT_MODEL
         sync: false
       - key: S3_BUCKET

@@ -1,0 +1,7 @@
+{
+  "name":"near-echoes-contract-lifecycle",
+  "private":true,
+  "type":"module",
+  "scripts":{"test":"node --test lifecycle.test.mjs"},
+  "devDependencies":{"near-workspaces":"5.0.0"}
+}

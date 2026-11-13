@@ -52,7 +52,7 @@ async def test_worker_observes_before_freeze_reuses_inputs_and_waits_for_signer(
     engine.dispose()
 
 async def test_online_contract_preflight_rejects_compressed_auction_and_wrong_binding():
-    settings=Settings(_env_file=None,near_minter_account="worker.testnet",near_nft_contract="nft.testnet",near_auction_contract="auction.testnet")
+    settings=Settings(_env_file=None,economy_enabled=False,near_minter_account="worker.testnet",near_nft_contract="nft.testnet",near_auction_contract="auction.testnet")
     class RPC:
         duration=604800*10**9
         async def call(self,method,args):return {"chain_id":"testnet"}

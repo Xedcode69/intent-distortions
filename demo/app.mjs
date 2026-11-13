@@ -1,12 +1,12 @@
 import {canonical,utf8,hex,sha,merkleRoot,deriveSeed,selectTimestamp} from "./core.mjs";
-let example,scene,step=0,bid=0,winner="No illustrative bid",settled=false;
+let example,scene,step=0,bid=0,winner="No illustrative bid",settled=false,earlyExit=false;
 const $=id=>document.getElementById(id);
 const stages=[
  ["Every journey leaves a trace.","An epoch collects eligible successful 1Click swap records. This educational example contains only synthetic records; it represents no real trading activity."],
  ["A checkpoint nobody picks by hand.","Production fixes a Sunday window and a future drand round in advance. After verifying its signature, the randomness selects a past timestamp and the first finalized block at or after it."],
  ["A dataset becomes a fingerprint.","Ordered canonical records become domain-separated SHA-256 hashes. A Merkle tree commits to every record; those commitments combine with the epoch, block and randomness to produce the art seed."],
  ["The data leaves its marks.","Timing determines angles. Source chains choose colors. Public amounts influence prominence. The saved scene contains every mathematical primitive used to render this image."],
- ["An artwork sustains the next.","In production, a unique NFT enters a custody-verified NEAR auction. Outbid collectors claim refunds. Treasury balances are credited only after NFT delivery succeeds."],
+ ["An artwork has its own account.","November 15/22/29, 2026 editions go to the team. From December 6, custody-verified 24-hour auctions automatically refund losing bids. Confirmed sales fund treasury and the edition's dedicated account."],
  ["Trust what you can recompute.","Your browser can check this example independently. These checks prove sample integrity and deterministic calculations; they do not prove real swap coverage, beacon authenticity or onchain ownership."]
 ];
 function el(tag,text,className){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(className)n.className=className;return n;}
@@ -20,7 +20,20 @@ function render(){document.querySelectorAll("[data-step]").forEach((b,i)=>{if(i=
  if(step===1){area.append(datum("Production window","Sunday 00:00–17:00 UTC"),datum("Production beacon","Predetermined round at 18:00 UTC"),datum("Sample selected time",new Date(example.selected_timestamp*1000).toUTCString()),hash("Synthetic randomness bytes",example.randomness),note("The timestamp calculation is real, but these beacon bytes and block 42 are synthetic. This browser does not claim BLS verification or an actual historical block."));}
  if(step===2){area.append(hash("Ordered dataset Merkle root",example.merkle_root),hash("Master art seed",example.master_seed),note("The seed includes the edition, dataset root, block hash, beacon randomness and previous image hash. Identical inputs reproduce the same geometry. File uniqueness does not guarantee perceptual dissimilarity."));}
  if(step===3){for(const [layer,label]of [["routes","Cross-chain route curves"],["geometry","Mathematical geometry"],["particles","Transaction-timed particles"],["inheritance","Previous-hash orbit"],["signature","Edition and seed signature"]]){const line=el("label",label,"check"),input=document.createElement("input");input.type="checkbox";input.checked=true;input.dataset.layer=layer;input.onchange=drawLayers;line.prepend(input);area.append(line);}area.append(note(`This sample uses ${example.composition.replaceAll("_"," ")}. The production renderer may use recorded NEAR AI direction; this offline example uses a deterministic fallback.`));drawLayers();}
- if(step===4){const box=el("div",undefined,"auction-demo");box.append(el("div","ILLUSTRATIVE CREDITS — NO MONEY","eyebrow"),el("h3",`${bid.toFixed(1)} credits`),el("p",`${winner}${settled?" · example settled":""}`));for(const [label,amount]of [["Collector A bids",1], ["Collector B bids",1.1]]){const b=el("button",label,"secondary");b.disabled=settled||bid>=amount;b.onclick=()=>{bid=amount;winner=label.split(" bids")[0];render();};box.append(b);}const settle=el("button","Explain settlement","button");settle.disabled=settled||!bid;settle.onclick=()=>{settled=true;render();};box.append(settle);if(settled){box.append(datum("Creative treasury · 60%",(bid*.6).toFixed(3)+" illustrative credits"),datum("Development · 25%",(bid*.25).toFixed(3)+" illustrative credits"),datum("Community · 15%",(bid*.15).toFixed(3)+" illustrative credits"),note("The live contract uses integer yoctoNEAR arithmetic and assigns rounding remainders to the community. This panel is only a teaching illustration."));}area.append(box);}
+ if(step===4){
+  const box=el("div",undefined,"auction-demo");
+  box.append(el("div","ILLUSTRATIVE CREDITS — NO MONEY","eyebrow"),el("h3",`${bid.toFixed(1)} credits`),el("p",`${winner}${settled?" · example settled":""}`));
+  for(const [label,amount]of [["Collector A bids",1],["Collector B bids",1.1]]){const b=el("button",label,"secondary");b.disabled=settled||bid>=amount;b.onclick=()=>{bid=amount;winner=label.split(" bids")[0];render();};box.append(b);}
+  const settle=el("button","Explain settlement","button");settle.disabled=settled||!bid;settle.onclick=()=>{settled=true;render();};box.append(settle);
+  if(settled){
+   box.append(datum("Treasury · 20%",(bid*.2).toFixed(3)+" illustrative credits"),datum("Dedicated edition vault · 80%",(bid*.8).toFixed(3)+" illustrative credits"));
+   const exit=el("button",earlyExit?"Keep the allocation for this month's draw":"Explain the one-time early withdrawal","secondary");exit.onclick=()=>{earlyExit=!earlyExit;render();};box.append(exit);
+   if(earlyExit)box.append(datum("Early withdrawal · 40% of allocation",(bid*.8*.4).toFixed(3)+" credits"),datum("Next-month rollover · 60% of allocation",(bid*.8*.6).toFixed(3)+" credits"),note("This edition loses its funded-cycle ticket. Its remainder funds next month without granting a new ticket. A secondary buyer cannot reset the withdrawal."));
+   else box.append(datum("Monthly contribution",(bid*.8).toFixed(3)+" credits"),note("One ticket per eligible NFT. At month-end, fresh contract-verified drand randomness chooses one winner for the entire collected pot. Other holders keep their artwork; their contributed balances are consumed by the prize."));
+   box.append(note("This panel is a teaching illustration, with no accounts or money. The live contracts use integer yoctoNEAR arithmetic, UTC cutoffs and separately funded gas/storage. They generate no external yield."));
+  }
+  area.append(box);
+ }
  if(step===5)void checks().catch(()=>area.replaceChildren(note("Verification unavailable. Serve this demo over localhost or HTTPS so Web Crypto can run.")));
 }
 document.querySelectorAll("[data-step]").forEach(b=>b.onclick=()=>{if(!example)return;step=Number(b.dataset.step);render();});$("back").onclick=()=>{step=Math.max(0,step-1);render();};$("next").onclick=()=>{step=(step+1)%6;render();};

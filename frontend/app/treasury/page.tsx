@@ -1,2 +1,2 @@
-import { Treasury } from "@/components/pages";
-export default function Page(){return <Treasury/>;}
+import {EconomyDashboard} from "@/components/economy-dashboard";
+export default function Page(){return <EconomyDashboard/>;}

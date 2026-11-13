@@ -25,6 +25,10 @@ test("SDK-encoded transaction verifies against the signing key and enforces scop
     assert.equal(signed.transaction.receiverId,"nft.testnet");
     await assert.rejects(execute({...request,receiver_id:"attacker.testnet"},env),/allowlist/);
     await assert.rejects(execute({...request,method:"delete_account"},env),/allowlist/);
+    await assert.rejects(execute({...request,method:"withdraw_edition"},env),/allowlist/);
+    await assert.rejects(execute({...request,method:"fund_edition_wallet",deposit:"1"},env),/zero deposit/);
+    const maintenance=await execute({...request,method:"close_month",args:{cycle:202612}},env);
+    assert.ok(maintenance.transaction_hash);
     await assert.rejects(execute({...request,deposit:"100000000000000000000001"},env),/limits/);
     await assert.rejects(execute(request,{...env,ENABLE_CHAIN_WRITES:"false"}),/disabled/);
     await assert.rejects(execute(request,{...env,NEAR_NETWORK:"mainnet"}),/not approved/);

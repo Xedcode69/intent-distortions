@@ -7,6 +7,7 @@ import { ArtworkStory } from "./artwork-story";
 import { NetworkMappingCoverage } from "./network-mapping-coverage";
 import { SceneSvg } from "./scene-svg";
 import { RenderControls } from "./render-controls";
+import { EconomyExample } from "./economy-dashboard";
 import { verifyFamilySelection } from "@/lib/family-selection";
 import type { ArtworkScene as Scene, HistoricalDemoData as Demo } from "./historical-demo-types";
 
@@ -77,5 +78,6 @@ export function HistoricalDemo(){
       <section className="demo-evidence"><h2>Check the evidence.</h2><p>Browser verification checks the published image and scene bytes. The recorded full-pipeline checks below were performed before publication.</p><button className="button primary" onClick={verify}><Check size={15}/> Verify image and scene</button>{verification&&<p role="status">{verification}</p>}<div className="demo-checks">{Object.entries(demo.verification.checks).map(([name,passed])=><span key={name}><Check size={12}/>{name.replaceAll("_"," ")}: {passed?"passed":"failed"}</span>)}</div>{[["Image SHA-256",demo.artwork.image_hash],["Dataset Merkle root",demo.artwork.merkle_root],["Art seed",demo.artwork.seed],["Recorded mainnet block",demo.checkpoint.hash],["Source snapshot SHA-256",demo.snapshot_sha256],["Provenance SHA-256",demo.provenance_sha256]].map(([label,value])=><div className="hash-field" key={label}><span className="overline">{label}</span><code>{value}</code></div>)}<p className="demo-note">These checks establish content integrity and reproducibility. They do not prove provider completeness, original as-of-freeze statuses, private-shard contents, NFT ownership or auction execution. Raw captures and credentials are never included in this presentation.</p></section>
     </>}
     <section className="demo-evidence"><div className="eyebrow">WHAT THIS DEMONSTRATES</div><h2>The same artwork pipeline, replayed from history.</h2><p>The historical demo uses the collection, checkpoint, commitment and rendering code used by the weekly process. A real-time release also observes its published schedule and performs separately verified onchain publication and auction operations.</p></section>
+    <EconomyExample/>
   </div>;
 }

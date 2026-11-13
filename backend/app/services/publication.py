@@ -1,6 +1,8 @@
 import base64
 import hashlib
 import httpx
+import time
+from datetime import datetime,timedelta,timezone
 from ..database import Artwork,ChainEvent
 from .storage import content_store
 from .provenance import verify_artwork
@@ -40,6 +42,8 @@ async def publish(factory,settings,artwork,writer=None,rpc=None):
                 async for chunk in response.aiter_bytes():hasher.update(chunk)
             if hasher.hexdigest()!=digest:raise ValueError("Public artifact bytes differ from commitment")
     token=artwork["edition"]
+    config=await rpc.view(settings.near_nft_contract,"get_config",{})
+    economy=config.get("version")=="echo-nft-3"
     expected={"epoch":artwork["number"],"image_hash":artwork["image_hash"],"provenance_hash":artwork["provenance"]["sha256"],
               "merkle_root":artwork["merkle_root"],"seed":artwork["seed"],"block_hash":artwork["block"]["hash"]}
     existing=await rpc.view(settings.near_nft_contract,"get_epoch_token",{"epoch":artwork["number"]})
@@ -47,8 +51,12 @@ async def publish(factory,settings,artwork,writer=None,rpc=None):
         metadata={"title":artwork["title"],"description":artwork["description"],"media":artwork["image"],
             "media_hash":base64.b64encode(bytes.fromhex(artwork["image_hash"])).decode(),"copies":1,
             "reference":artwork["provenance"]["uri"],"reference_hash":base64.b64encode(bytes.fromhex(artwork["provenance"]["sha256"])).decode()}
-        receipt=await writer.submit(f'{artwork["id"]}:mint',settings.near_nft_contract,"mint_weekly_artwork",
-            {"receiver_id":settings.near_auction_contract,"metadata":metadata,"commitment":expected},"100000000000000000000000")
+        if economy:
+            release=datetime.strptime(settings.first_release_sunday,"%Y-%m-%d").replace(tzinfo=timezone.utc)+timedelta(weeks=artwork["number"]-1)
+            method="mint_scheduled_artwork";args={"release_ns":str(int(release.timestamp())*10**9),"metadata":metadata,"commitment":expected}
+        else:
+            method="mint_weekly_artwork";args={"receiver_id":settings.near_auction_contract,"metadata":metadata,"commitment":expected}
+        receipt=await writer.submit(f'{artwork["id"]}:mint',settings.near_nft_contract,method,args,"100000000000000000000000")
         await index_receipt(factory,receipt,settings.near_nft_contract,token,rpc)
     elif existing!=token:raise ValueError("Onchain epoch conflicts with canonical token")
     commitment=await rpc.view(settings.near_nft_contract,"get_provenance",{"token_id":token})
@@ -58,6 +66,19 @@ async def publish(factory,settings,artwork,writer=None,rpc=None):
         row=db.get(Artwork,artwork["id"]);effect=db.get(Effect,f'{artwork["id"]}:mint')
         row.payload={**row.payload,"nft":{"status":"minted","token_id":token,"contract":settings.near_nft_contract,
             "transaction_hash":effect.transaction_hash if effect else None,"evidence":"finalized NFT commitment view"}}
+    if economy:
+        wallet=await rpc.view(settings.near_nft_contract,"get_edition_wallet",{"token_id":token})
+        if wallet["wallet_status"] in ("Uncreated","Creating"):
+            method="create_edition_wallet" if wallet["wallet_status"]=="Uncreated" else "reconcile_wallet"
+            receipt=await writer.submit(f'{artwork["id"]}:wallet:{method}:{wallet["creation_attempt"]}:{int(time.time())//300}',settings.near_nft_contract,method,{"token_id":token})
+            await index_receipt(factory,receipt,settings.near_nft_contract,token,rpc)
+            wallet=await rpc.view(settings.near_nft_contract,"get_edition_wallet",{"token_id":token})
+        if wallet["wallet_status"] not in ("Ready","Funding","Funded"):raise ValueError("Dedicated edition wallet is not ready")
+        if int(wallet["release_ns"])<1796515200*10**9:
+            result={"status":"CreatorMinted","token_id":token,"account_id":wallet["account_id"]}
+            with factory.begin() as db:
+                row=db.get(Artwork,artwork["id"]);row.payload={**row.payload,"auction":result,"wallet":wallet}
+            return result
     auction=await rpc.view(settings.near_auction_contract,"get_auction",{"token_id":token})
     if auction is None:
         owner=await rpc.view(settings.near_nft_contract,"nft_token",{"token_id":token})

@@ -74,7 +74,7 @@ class Worker:
         if art:
             if not self.settings.enable_chain_writes:self.state(number,"awaiting_signer");return
             auction=await publish(self.factory,self.settings,art.payload,self.writer)
-            self.state(number,"settled" if auction["status"] in ("Settled","Unsold") else "auction_active")
+            self.state(number,"settled" if auction["status"] in ("Settled","Unsold","CreatorMinted") else "auction_active")
             return
         if now<r.freeze_at:
             raw,evidence=await asyncio.wait_for(self.collector.collect(start,end,self.settings.collector_page_size,on_page=lambda page:persist_page(self.factory,page)),max(1,r.freeze_at-int(self.clock())))
@@ -144,6 +144,9 @@ class Worker:
     async def monitor(self):
         if not self.settings.enable_chain_writes:return
         rpc=self.writer.rpc
+        if self.settings.economy_enabled:
+            from ..services.economy_keeper import EconomyKeeper
+            await EconomyKeeper(self.factory,self.settings,self.writer).tick()
         latest=await rpc.block();now_ns=int(latest["timestamp_nanosec"])
         with self.factory() as db:arts=[a.payload for a in db.scalars(select(Artwork)) if a.payload["mode"]=="live" and a.payload["nft"]["status"]=="minted"]
         for art in arts:

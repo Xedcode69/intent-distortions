@@ -1,6 +1,6 @@
 # Architecture
 
-The production application consists of Next.js, private FastAPI, one durable background worker, managed PostgreSQL, content-addressed S3/CloudFront storage, an isolated Node transaction signer, and two Rust contracts. The educational demo is a separate static application with synthetic assets and no integration credentials. [Managed-cloud operations](managed-cloud.md) defines deployment and trust boundaries.
+The production application consists of Next.js, private FastAPI, one durable background worker, managed PostgreSQL, content-addressed S3/CloudFront storage, an isolated Node transaction signer, NFT/auction Rust contracts and a vault contract deployed to each edition's dedicated keyless account. [ECONOMY.md](ECONOMY.md) defines the current 24-hour auction, allocation, ownership, rollover and contract-verified draw policy; legacy v2 auction APIs are laboratory-only. The educational demo is a separate static application with synthetic assets and no integration credentials. [Managed-cloud operations](managed-cloud.md) defines deployment and trust boundaries.
 
 PostgreSQL stores normalized public swap features, frozen epochs and ordered membership, artworks, jobs, weekly releases, complete collection observations, an immutable protocol configuration, signed chain effects, and verified receipt events. Deposit addresses and memos are hashed into pseudonymous record identities before persistence. Beacon, creative response, scene and artifact commitments live in immutable provenance.
 

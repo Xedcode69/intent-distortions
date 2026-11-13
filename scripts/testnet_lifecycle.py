@@ -10,6 +10,7 @@ import json
 import shutil
 import subprocess
 import sys
+from datetime import datetime,timedelta,timezone
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/"backend"))
@@ -53,19 +54,33 @@ async def main():
             response=await client.get(url);response.raise_for_status()
             if sha(response.content).hex()!=expected:raise SystemExit("Public URI bytes do not match frozen content commitment")
     token_id=artwork["edition"]
+    economy=(await rpc.view(settings.near_nft_contract,"get_config",{})).get("version")=="echo-nft-3"
     existing=await rpc.view(settings.near_nft_contract,"get_epoch_token",{"epoch":artwork["number"]})
     if existing is None:
         metadata={"title":artwork["title"],"description":artwork["description"]+" Mode: "+artwork["mode"],
             "media":a.media_uri,"media_hash":base64.b64encode(bytes.fromhex(artwork["image_hash"])).decode(),"copies":1,
             "reference":a.provenance_uri,"reference_hash":base64.b64encode(bytes.fromhex(artwork["provenance"]["sha256"])).decode()}
         commitment={"epoch":artwork["number"],"image_hash":artwork["image_hash"],"provenance_hash":artwork["provenance"]["sha256"],"merkle_root":artwork["merkle_root"],"seed":artwork["seed"],"block_hash":artwork["block"]["hash"]}
-        call(settings.near_nft_contract,"mint_weekly_artwork",{"receiver_id":settings.near_auction_contract,"metadata":metadata,"commitment":commitment},a.minter,"0.1 NEAR")
+        if economy:
+            if settings.first_release_sunday!="2026-11-15":raise SystemExit("Economy requires FIRST_RELEASE_SUNDAY=2026-11-15")
+            release=datetime(2026,11,15,tzinfo=timezone.utc)+timedelta(weeks=artwork["number"]-1)
+            call(settings.near_nft_contract,"mint_scheduled_artwork",{"release_ns":str(int(release.timestamp())*10**9),"metadata":metadata,"commitment":commitment},a.minter,"0.1 NEAR")
+        else:
+            call(settings.near_nft_contract,"mint_weekly_artwork",{"receiver_id":settings.near_auction_contract,"metadata":metadata,"commitment":commitment},a.minter,"0.1 NEAR")
     elif existing!=token_id:raise SystemExit("Onchain epoch token conflicts with local edition")
     commitment=await rpc.view(settings.near_nft_contract,"get_provenance",{"token_id":token_id})
     if commitment["image_hash"]!=artwork["image_hash"]:raise SystemExit("Onchain image commitment mismatch")
     with factory.begin() as db:
         row=db.get(Artwork,a.edition)
         row.payload={**row.payload,"nft":{"status":"minted","token_id":token_id,"contract":settings.near_nft_contract,"transaction_hash":None,"evidence":"finalized contract view; receipt hash available in near-cli output"}}
+    if economy:
+        wallet=await rpc.view(settings.near_nft_contract,"get_edition_wallet",{"token_id":token_id})
+        if wallet["wallet_status"]=="Uncreated":call(settings.near_nft_contract,"create_edition_wallet",{"token_id":token_id},a.minter)
+        elif wallet["wallet_status"]=="Creating":call(settings.near_nft_contract,"reconcile_wallet",{"token_id":token_id},a.minter)
+        wallet=await rpc.view(settings.near_nft_contract,"get_edition_wallet",{"token_id":token_id})
+        if wallet["wallet_status"]!="Ready" and wallet["cycle"] is None:raise SystemExit("Fund the coordinator operating reserve and reconcile wallet creation")
+        if int(wallet["release_ns"])<1796515200*10**9:
+            print(json.dumps({"status":"CreatorMinted","edition_wallet":wallet,"owner":(await rpc.view(settings.near_nft_contract,"nft_token",{"token_id":token_id}))["owner_id"]},indent=2));return
     auction=await rpc.view(settings.near_auction_contract,"get_auction",{"token_id":token_id})
     if auction is None:
         call(settings.near_auction_contract,"create_auction",{"token_id":token_id},a.minter,"0.05 NEAR")
@@ -91,6 +106,11 @@ async def main():
         if auction["status"]!="Settled":raise SystemExit("Auction did not settle; inspect receipts and custody")
         token=await rpc.view(settings.near_nft_contract,"nft_token",{"token_id":token_id})
         if token["owner_id"]!=auction["highest_bidder"]:raise SystemExit("Winner ownership mismatch")
+        if economy:
+            wallet=await rpc.view(settings.near_nft_contract,"get_edition_wallet",{"token_id":token_id})
+            if wallet["wallet_status"]=="Ready":call(settings.near_nft_contract,"fund_edition_wallet",{"token_id":token_id},a.minter)
+            wallet=await rpc.view(settings.near_nft_contract,"get_edition_wallet",{"token_id":token_id})
+            if wallet["wallet_status"]!="Funded":raise SystemExit("Inspect vault funding receipts")
         refund=await rpc.view(settings.near_auction_contract,"get_refund",{"account":a.bidder_a})
         if int(refund)>0:call(settings.near_auction_contract,"claim_refund",{},a.bidder_a,"1 yoctoNEAR")
         print("Verified finalized NFT ownership, auction settlement, and losing-bidder refund.")

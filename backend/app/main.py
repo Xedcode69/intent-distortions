@@ -213,9 +213,58 @@ def activity(): return [{"edition":r["edition"],"count":r["stats"]["total_swaps"
 @app.get("/api/v1/analytics/treasury")
 async def treasury():
     if not settings.near_auction_contract:
-        return {"status":"not_deployed","earned_yocto":"0","allocations":[],"events":[],"policy_bps":[6000,2500,1500]}
+        return {"status":"not_deployed","earned_yocto":"0","allocations":[],"events":[],"policy_bps":[2000,8000]}
     from .services.near_rpc import NearRPC
+    if settings.economy_enabled:
+        economy=await NearRPC(settings.near_rpc_url).view(settings.near_nft_contract,"get_economy",{})
+        return {"status":"onchain","earned_yocto":economy["gross_earned"],"policy_bps":[2000,8000],"events":[],
+            "allocations":[{"account":economy["treasury"],"balance":economy["treasury_credit"]}],"economy":economy}
     return await NearRPC(settings.near_rpc_url).view(settings.near_auction_contract,"get_treasury",{})
+
+@app.get("/api/v1/economy")
+async def economy():
+    if not settings.near_nft_contract:
+        return {"status":"not_deployed","currency":"NEAR","treasury_bps":2000,"vault_bps":8000,"early_exit_bps_of_vault":4000,
+            "creator":None,"treasury":None,"treasury_earned":"0","treasury_credit":"0","next_close":202612,
+            "first_edition_ns":"1794700800000000000","first_auction_ns":"1796515200000000000","exited_ticket_reentry":False}
+    from .services.near_rpc import NearRPC
+    return await NearRPC(settings.near_rpc_url).view(settings.near_nft_contract,"get_economy",{})
+
+@app.get("/api/v1/economy/wallets")
+async def edition_wallets(offset:int=0,limit:int=50):
+    if offset<0 or not 1<=limit<=100:raise HTTPException(422,"Invalid pagination")
+    if not settings.near_nft_contract:return []
+    from .services.near_rpc import NearRPC
+    return await NearRPC(settings.near_rpc_url).view(settings.near_nft_contract,"get_edition_wallets",{"from_index":offset,"limit":limit})
+
+@app.get("/api/v1/economy/wallets/{token_id}")
+async def edition_wallet(token_id:str):
+    if not settings.near_nft_contract:raise HTTPException(404,"NFT contract not configured")
+    from .services.near_rpc import NearRPC
+    rpc=NearRPC(settings.near_rpc_url)
+    wallet=await rpc.view(settings.near_nft_contract,"get_edition_wallet",{"token_id":token_id})
+    if wallet is None:raise HTTPException(404,"Edition wallet not found")
+    state=None
+    if wallet["wallet_status"] not in ("Uncreated","Creating"):
+        state=await rpc.view(wallet["account_id"],"get_state",{})
+    token=await rpc.view(settings.near_nft_contract,"nft_token",{"token_id":token_id})
+    return {**wallet,"vault_state":state,"current_owner":token["owner_id"] if token else None}
+
+@app.get("/api/v1/economy/months")
+async def economy_months(offset:int=0,limit:int=24):
+    if offset<0 or not 1<=limit<=100:raise HTTPException(422,"Invalid pagination")
+    if not settings.near_nft_contract:return []
+    from .services.near_rpc import NearRPC
+    return await NearRPC(settings.near_rpc_url).view(settings.near_nft_contract,"get_months",{"from_index":offset,"limit":limit})
+
+@app.get("/api/v1/economy/months/{cycle}")
+async def economy_month(cycle:int):
+    if not 2026<=cycle//100<=2500 or not 1<=cycle%100<=12:raise HTTPException(422,"Invalid month")
+    if not settings.near_nft_contract:raise HTTPException(404,"NFT contract not configured")
+    from .services.near_rpc import NearRPC
+    result=await NearRPC(settings.near_rpc_url).view(settings.near_nft_contract,"get_month",{"cycle":cycle})
+    if result is None:raise HTTPException(404,"Monthly cycle not created")
+    return result
 
 @app.get("/api/v1/analytics/curation")
 async def curation():

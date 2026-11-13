@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     mainnet_writes_approved: bool = False
     expected_nft_code_hash: str = ""
     expected_auction_code_hash: str = ""
+    expected_vault_code_hash: str = ""
+    near_creator_account: str = ""
+    near_treasury_account: str = ""
+    economy_enabled: bool = True
     max_request_bytes: int = Field(default=262144,ge=1024,le=1048576)
     verification_concurrency: int = Field(default=1,ge=1,le=4)
     rpc_timeout_seconds: int = Field(default=30,ge=5,le=60)
@@ -73,6 +77,10 @@ class Settings(BaseSettings):
         if not self.near_nft_contract or not self.near_auction_contract:
             issues.append("deployed NFT and auction account IDs are required")
         if not self.near_minter_account:issues.append("NEAR_MINTER_ACCOUNT is required")
+        if not self.economy_enabled:issues.append("production requires the dedicated-account economy")
+        if not self.near_creator_account or not self.near_treasury_account:issues.append("NEAR_CREATOR_ACCOUNT and NEAR_TREASURY_ACCOUNT are required")
+        if len(self.expected_vault_code_hash)!=64 or any(c not in "0123456789abcdef" for c in self.expected_vault_code_hash):issues.append("reviewed vault WASM SHA-256 must be pinned")
+        if self.first_release_sunday!="2026-11-15":issues.append("economy launch requires FIRST_RELEASE_SUNDAY=2026-11-15")
         if len({self.near_minter_account,self.near_nft_contract,self.near_auction_contract})!=3:issues.append("minter, NFT and auction must be separate accounts")
         if any(len(h)!=64 or any(c not in "0123456789abcdef" for c in h) for h in (self.expected_nft_code_hash,self.expected_auction_code_hash)):
             issues.append("both reviewed WASM SHA-256 hashes must be pinned before protocol initialization")

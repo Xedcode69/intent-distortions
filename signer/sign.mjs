@@ -13,10 +13,14 @@ export async function execute(request,env=process.env){
   if(request.op==="public_key")return {public_key:key.getPublicKey().toString()};
   if(env.ENABLE_CHAIN_WRITES!=="true")throw new Error("Chain writes are disabled");
   if(env.NEAR_NETWORK==="mainnet"&&env.MAINNET_WRITES_APPROVED!=="true")throw new Error("Mainnet signing not approved");
-  const allowed=request.receiver_id===env.NEAR_NFT_CONTRACT?["mint_weekly_artwork"]:
-    request.receiver_id===env.NEAR_AUCTION_CONTRACT?["create_auction","finalize_auction","retry_custody","reconcile_settlement"]:[];
+  const nftMethods=["mint_weekly_artwork","mint_scheduled_artwork","create_edition_wallet","reconcile_wallet","fund_edition_wallet",
+    "dispatch_exit","close_month","collect_edition","draw_month","pay_month","process_treasury"];
+  const auctionMethods=["create_auction","finalize_auction","retry_custody","reconcile_settlement","forward_proceeds","reconcile_funding","process_refund"];
+  const allowed=request.receiver_id===env.NEAR_NFT_CONTRACT?nftMethods:
+    request.receiver_id===env.NEAR_AUCTION_CONTRACT?auctionMethods:[];
   if(!allowed.includes(request.method))throw new Error("Signing request outside contract/method allowlist");
   const deposit=BigInt(request.deposit),gas=BigInt(request.gas);
+  if(!["mint_weekly_artwork","mint_scheduled_artwork","create_auction"].includes(request.method)&&deposit!==0n)throw new Error("Maintenance calls require zero deposit");
   if(deposit<0n||deposit>100000000000000000000000n||gas<1n||gas>200000000000000n)throw new Error("Signing limits exceeded");
   const transaction=createTransaction(request.account_id,key.getPublicKey(),request.receiver_id,BigInt(request.nonce),
     [actionCreators.functionCall(request.method,request.args,gas,deposit)],base58.decode(request.block_hash));

@@ -18,6 +18,7 @@ __pycache__/
 *.db
 data/
 target/
+contracts/artifacts/
 dist/
 .venv/
 frontend/next-env.d.ts

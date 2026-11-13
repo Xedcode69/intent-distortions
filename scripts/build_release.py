@@ -33,7 +33,7 @@ for folder in ["backend","frontend","signer","contracts","deploy","docs"]:
     for directory,dirs,names in os.walk(ROOT/folder):
         dirs[:]=sorted(d for d in dirs if d not in EXCLUDED and not d.endswith(".egg-info"))
         for name in sorted(names):
-            if name.startswith(".env") or name.endswith((".pyc",".tsbuildinfo",".test.mjs")) or name in ("AGENTS.md","next-env.d.ts"):continue
+            if name.startswith(".env") or name.endswith((".pyc",".tsbuildinfo")) or (name.endswith(".test.mjs") and folder!="contracts") or name in ("AGENTS.md","next-env.d.ts"):continue
             path=Path(directory)/name;files[path.relative_to(ROOT).as_posix()]=path.read_bytes()
             if folder=="signer" and name not in ("sign.mjs","package.json","package-lock.json"):
                 del files[path.relative_to(ROOT).as_posix()]
@@ -43,9 +43,10 @@ for name in ["render.yaml","pyproject.toml","uv.lock",".python-version",".docker
 blueprint=yaml.safe_load(files["render.yaml"])
 blueprint["services"]=[service for service in blueprint["services"] if service["name"]!="near-echoes-explainer"]
 files["render.yaml"]=yaml.safe_dump(blueprint,sort_keys=False).encode()
-for name in ["production_preflight.py","verify_epoch.py","export_artwork.py","validate_deployment.py","test_historical_week.py","serve_replay.py","publish_replay_demo.py"]:
+for name in ["production_preflight.py","verify_epoch.py","export_artwork.py","validate_deployment.py","test_historical_week.py","serve_replay.py","publish_replay_demo.py","build_contracts.py","test_economy_sandbox.ps1"]:
     files[f"scripts/{name}"]=(ROOT/"scripts"/name).read_bytes()
-for name in ["echo_nft.wasm","echo_auction.wasm"]:
+files["fixtures/sample-epoch/verified-beacon.json"]=(ROOT/"fixtures/sample-epoch/verified-beacon.json").read_bytes()
+for name in ["echo_nft.wasm","echo_auction.wasm","echo_vault.wasm"]:
     path=ROOT/"contracts/target/wasm32-unknown-unknown/release"/name
     if not path.exists():raise SystemExit("Build both current contract WASM artifacts before packaging")
     files[f"artifacts/{name}"]=path.read_bytes()

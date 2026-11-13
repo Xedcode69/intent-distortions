@@ -24,7 +24,7 @@ async def check(online):
         if db.scalar(text("SELECT version_num FROM alembic_version"))!="0002":raise ValueError("Database migrations are not current")
         first=db.scalar(select(Epoch.id).where(Epoch.mode=="live").limit(1))
     if not first and value["first_sunday"]+18*3600+settings.reconciliation_delay_seconds<=time.time():
-        raise ValueError("Initial freeze has passed; choose a future first Sunday before committing a new protocol")
+        raise ValueError("Initial freeze has passed without a recorded release; recover its frozen observations or review a new launch policy")
     from app.services.preflight import validate_contracts
     report["chain"]=await validate_contracts(settings)
     from app.services.near_rpc import NearRPC

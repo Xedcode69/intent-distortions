@@ -2,6 +2,8 @@
 
 Weekly generative art derived from a committed NEAR Intents dataset, a scheduled drand beacon, a verified historical NEAR block, and the previous artwork hash.
 
+The edition economy uses dedicated keyless NEAR accounts named `monthYEAR-edition-N.<nft-account>`, with monthly numbering. November 15/22/29, 2026 go to the creator; December 6 starts 24-hour auctions. Successful sales allocate 20% to treasury and 80% to the edition account. A one-time withdrawal pays 40% of that original allocation, excludes the edition from its funded draw and rolls the remainder forward. Monthly winners use contract-verified drand proofs. See [financial rules, building and deployment](docs/ECONOMY.md). `/economy` exposes contract state; `/demo` includes a separate simulated accounting explanation. This remains a release candidate pending credentialed testnet acceptance and independent review.
+
 The repository now contains **two separate applications**:
 
 | Application | Purpose | Runtime |

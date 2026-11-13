@@ -15,6 +15,8 @@ def policy(settings):
     return {"protocol_id":settings.protocol_id,"network":settings.near_network,"nft_contract":settings.near_nft_contract,
         "auction_contract":settings.near_auction_contract,"genesis_checkpoint":settings.genesis_checkpoint,
         "nft_code_hash":settings.expected_nft_code_hash,"auction_code_hash":settings.expected_auction_code_hash,
+        "economy_policy":"dedicated-accounts-calendar-month-v1" if settings.economy_enabled else "legacy",
+        "vault_code_hash":settings.expected_vault_code_hash,"creator":settings.near_creator_account,"treasury":settings.near_treasury_account,
         "first_sunday":int(sunday.timestamp()),"window_seconds":61200,"beacon_hour_utc":18,
         "drand_chain_hash":CHAIN_HASH,"reconciliation_delay_seconds":settings.reconciliation_delay_seconds,
         "max_observation_age_seconds":settings.freeze_observation_max_age_seconds,
