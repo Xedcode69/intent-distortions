@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { ArrowDown, Check, Fingerprint, LoaderCircle } from "lucide-react";
+import { ReplayProgress } from "./replay-progress";
 
 type Asset = {url:string;sha256:string};
 type Demo = {
@@ -53,6 +54,7 @@ export function HistoricalDemo(){
     catch(reason){setVerification(reason instanceof Error?reason.message:"Verification failed.");}
   }
   return <div className="page-container historical-demo"><div className="page-title"><div className="eyebrow">THE PROCESS, MADE VISIBLE</div><h1>Past movement.<br/><em>A real echo.</em></h1><p>A read-only demonstration of recorded swap data becoming a reproducible artwork.</p></div>
+    <ReplayProgress/>
     {state==="loading"&&<div className="demo-placeholder" role="status"><LoaderCircle className="spin"/><p>Opening the historical demonstration…</p></div>}
     {state==="empty"&&<div className="demo-placeholder"><Fingerprint size={38}/><h2>The first historical demo is being prepared.</h2><p>No completed real-data replay has been published here yet. Once available, its artwork, capture date and verification evidence will appear below.</p></div>}
     {state==="error"&&<div className="demo-placeholder" role="alert"><h2>The saved demo could not be verified.</h2><p>{error}</p><button className="button subtle" onClick={()=>location.reload()}>Try again</button></div>}

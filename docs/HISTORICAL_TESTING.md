@@ -90,6 +90,14 @@ Open **http://127.0.0.1:3003**. The replay API uses **127.0.0.1:8001**. The laun
 
 The UI labels historical replay as read-only, disables wallet actions and displays the recorded block. The DNA viewer and provenance checks use the generated edition's actual manifest. You can also inspect `export/artwork.png` and the reports directly without starting servers.
 
+### Collection progress and the weekly count
+
+The official Explorer OpenAPI specification documents paginated transaction arrays, not a filtered total-count endpoint or a total field in the response. An exact count for this run is therefore established by completing the same pagination, deduplication and exact-boundary filtering used for the artwork. Public daily or rolling transaction totals may cover different records and must not be used as this run's denominator.
+
+The historical runner writes an allowlisted `progress.json` with phase, received-row count, pages, elapsed time and the requested interval. The local historical API exposes `GET /api/v1/replay/progress`; the `/demo` page polls it every five seconds. Collection uses an indeterminate progress bar while the total is unknown, then reports the completed capture's unique record count and successful eligible count separately. The bar measures collection completion, not paid generation or verification completion. Stale updates are labelled. No provider records, URLs or credentials enter the progress response. Production mode does not expose this local progress endpoint.
+
+The already-running first real capture was started before native progress-file reporting was added; its observed CLI counters are relayed to the local display without restarting or discarding the in-flight collection. Subsequent runs publish progress directly on each received page.
+
 ## Prepare the site's separate Demo section
 
 The main site's **Demo** navigation item opens `/demo`. It reads a static, verified historical presentation independently of the production API/database. Before a real run is published, it explicitly says that no completed historical demo is available. It never presents the synthetic educational sample as real history.

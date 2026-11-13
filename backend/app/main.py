@@ -158,6 +158,17 @@ def current():
             "collection":"authenticated_explorer","schedule_timezone":"UTC"}
     return {"mode":settings.execution_mode,"status":"demo_fixture" if settings.execution_mode=="demo" else "awaiting_checkpoint", "next_selection":sunday_schedule(),"selected_block":None,"collection":"not_live" if settings.execution_mode=="demo" else "see_ingestion_health", "schedule_timezone":"UTC"}
 
+
+@app.get("/api/v1/replay/progress")
+def replay_progress():
+    if settings.execution_mode != "historical_replay" or settings.app_env == "production":
+        raise HTTPException(404)
+    from .services.replay_progress import read_progress
+    try:
+        return read_progress(settings.data_dir)
+    except (ValueError, OSError):
+        raise HTTPException(503,"Replay progress temporarily unavailable") from None
+
 @app.get("/api/v1/epochs/{id}")
 def epoch(id:str):
     with factory() as db:

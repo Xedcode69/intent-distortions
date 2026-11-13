@@ -21,3 +21,10 @@
 .demo-checks span{display:flex;align-items:center;gap:6px;font:10px monospace;color:var(--mint)}
 .historical-demo .dna-canvas>img{width:100%;border:1px solid var(--line)}
 @media(max-width:580px){.demo-placeholder{padding:25px}.demo-steps li{gap:12px;grid-template-columns:25px 1fr}.demo-steps li>svg{display:none}}
+.replay-progress{margin-bottom:32px;padding:28px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.replay-progress-heading,.replay-progress-numbers{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
+.replay-progress-heading h2{font:28px Georgia,serif;margin-top:12px}.replay-progress-track{height:8px;margin:26px 0 20px;background:var(--line);overflow:hidden;border-radius:6px}
+.replay-progress-fill{display:block;height:100%;background:var(--mint)}.replay-progress-fill.complete{width:100%}.replay-progress-fill.indeterminate{width:28%;animation:replay-scan 2s ease-in-out infinite alternate}
+.replay-progress-numbers{justify-content:flex-start;gap:28px;font-size:12px;margin-bottom:18px;font-variant-numeric:tabular-nums}.replay-progress-numbers b{font-size:22px;font-weight:400;color:var(--mint)}.replay-progress>p{font-size:12px}
+@keyframes replay-scan{from{transform:translateX(0)}to{transform:translateX(255%)}}
+@media(prefers-reduced-motion:reduce){.replay-progress-fill.indeterminate{animation:none;opacity:.65}}

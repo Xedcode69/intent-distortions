@@ -24,6 +24,7 @@ from .near_rpc import NearRPC
 from .provenance import verify_artwork
 from .randomness import fetch_beacon, round_for, select_timestamp, verify_beacon
 from .storage import ContentStore
+from .replay_progress import ProgressWriter
 
 
 @dataclass(frozen=True)
@@ -221,11 +222,13 @@ async def replay_week(plan, base, directory, *, action="run", rpc=None, collecto
         _write(directory / "readiness.json", report)
         return report
 
+    tracker = ProgressWriter(directory, sunday=plan.sunday, start=plan.start, clock=clock)
     rpc = rpc or NearRPC(cfg.near_mainnet_rpc_url)
     fetch = beacon_fetch or fetch_beacon
     stage = "beacon"
     engine = None
     try:
+        tracker.update(stage="beacon")
         progress("Verifying the predetermined historical drand beacon")
         beacon_file = directory / "beacon.json"
         beacon = json.loads(beacon_file.read_text(encoding="utf-8")) if beacon_file.exists() else await fetch(plan.sunday_start + 18 * 3600)
@@ -235,6 +238,7 @@ async def replay_week(plan, base, directory, *, action="run", rpc=None, collecto
         report["stages"]["beacon"] = {"status": "passed", "round": beacon["round"], "selected_timestamp": target}
 
         stage = "checkpoint"
+        tracker.update(stage=stage)
         progress("Checking the historical mainnet block, predecessor and finality")
         if (await asyncio.wait_for(rpc.call("status", {}),timeout=45))["chain_id"] != "mainnet":
             raise ValueError("Historical source RPC must be NEAR mainnet")
@@ -256,11 +260,13 @@ async def replay_week(plan, base, directory, *, action="run", rpc=None, collecto
         _write(evidence_file, evidence)
         report["stages"]["checkpoint"] = {"status": "passed", "height": block["height"], "hash": block["hash"], "timestamp_ns": str(block["timestamp_ns"])}
         report["interval"] = {"start_ns": str(plan.start * 10**9), "end_ns": str(block["timestamp_ns"]), "rule": "[start,end)"}
+        tracker.update(end_ns=str(block["timestamp_ns"]))
         if action == "prepare":
             report["status"] = "checkpoint_prepared"
             return report
 
         stage = "capture"
+        tracker.update(stage=stage)
         capture_file = directory / "capture.source.json"
         if not capture_file.exists():
             if (directory / "replay.db").exists():
@@ -281,6 +287,7 @@ async def replay_week(plan, base, directory, *, action="run", rpc=None, collecto
             def collected_page(page):
                 nonlocal pages, rows, last_progress
                 pages += 1; rows += len(page)
+                tracker.update(pages=pages, received_rows=rows)
                 if pages == 1 or time.monotonic() - last_progress >= 30:
                     progress(f"Explorer capture: {pages} pages, {rows} received rows; pagination continues until complete")
                     last_progress = time.monotonic()
@@ -303,6 +310,9 @@ async def replay_week(plan, base, directory, *, action="run", rpc=None, collecto
         else:
             progress("Verifying and reusing the saved capture; no Explorer requests repeated")
         raw, records, source = _load_capture(directory, plan, block)
+        tracker.update(pages=source.get("pages",0), received_rows=max(tracker.value.received_rows,len(raw)),
+                       total_records=len(raw), eligible_records=len(records), collection_complete=True,
+                       total_source="complete_capture")
         if not records:
             raise ValueError("No successful eligible records; this test requires a nonempty historical dataset")
         report["stages"][stage] = {"status": "passed", "raw_records": len(raw), "successful_records": len(records),
@@ -310,6 +320,7 @@ async def replay_week(plan, base, directory, *, action="run", rpc=None, collecto
                                    "observed_at": source["capture_completed_at"]}
 
         stage = "art_direction"
+        tracker.update(stage=stage)
         if plan.ai == "required" and (not cfg.near_ai_api_key or not cfg.near_ai_text_model):
             report["status"] = "blocked"
             report["stages"][stage] = {"status": "blocked", "reason": "NEAR AI key and model ID required"}
@@ -325,6 +336,7 @@ async def replay_week(plan, base, directory, *, action="run", rpc=None, collecto
         artwork = await run_epoch(factory, cfg, **arguments)
         report["stages"][stage] = {"status": "passed" if plan.ai == "required" else "fallback_selected", "provider": artwork["ai_provider"]}
         stage = "verification"
+        tracker.update(stage=stage)
         progress("Rebuilding the scene and PNG; checking membership, idempotency and tamper detection")
         store = ContentStore(directory / "content")
         verification = verify_artwork(store, artwork, rerender=True)
@@ -347,6 +359,7 @@ async def replay_week(plan, base, directory, *, action="run", rpc=None, collecto
         report["stages"][stage] = verification
 
         stage = "export"
+        tracker.update(stage=stage)
         provenance_bytes = store.get(artwork["provenance"]["sha256"])
         provenance = json.loads(provenance_bytes)
         export = directory / "export"
@@ -392,6 +405,8 @@ async def replay_week(plan, base, directory, *, action="run", rpc=None, collecto
     finally:
         if engine is not None:
             engine.dispose()
+        tracker.update(status=report["status"] if report["status"] in ("passed","failed","blocked","interrupted") else "idle",
+                       stage="complete" if report["status"] == "passed" else stage)
         _write(directory / "report.json", report)
         lines = ["# NEAR ECHOES historical replay test", "", f"Status: {report['status']}",
                  f"Sunday: {plan.sunday}; mode: historical_replay; AI policy: {plan.ai}", "",

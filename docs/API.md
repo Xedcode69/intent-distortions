@@ -4,6 +4,8 @@ Interactive schema: `/docs` in development; docs and demo routes are disabled in
 
 The main frontend's `/demo` page is a separate read-only historical showcase backed by prepared static public assets. It does not use the development-only `/api/v1/demo/*` generation endpoints and is available in the production frontend without enabling those endpoints.
 
+Local historical mode additionally exposes `GET /api/v1/replay/progress`: allowlisted phase, interval, received rows, pages, elapsed time and completed capture counts. The total and collection percentage remain null until pagination completes; completed collection reports 100 independently of later artwork verification. Production and other execution modes return 404. The route reads no integration credentials and has no write operation.
+
 | Resource | Routes |
 |---|---|
 | Health/configuration | `GET /health`, `/protocol` (no secret values) |
