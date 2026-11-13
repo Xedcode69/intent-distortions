@@ -1,5 +1,7 @@
 # Verified historical demo — 8 November 2026
 
+> Superseded in the current Demo section by the [registry-aware edition](2026-11-08-network-mapping.md). This earlier edition is retained as a verified historical comparison.
+
 Artwork: **Interchain Flux**. Creative direction: NEAR AI Cloud (`Qwen/Qwen3-VL-30B-A3B-Instruct`).
 
 **130,086 unique successful records**, collected in **131 cursor pages**. The completed capture matches the independent smaller-window count.

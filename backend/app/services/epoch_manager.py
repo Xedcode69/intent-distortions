@@ -7,7 +7,7 @@ from .canonical_data import canonical, sha, snapshot,validate_snapshot
 from .merkle import root, proof,proof_index
 from .art_seed import master_seed, GENESIS_HASH
 from .art_statistics import statistics
-from .art_renderer import scene, render, VERSION
+from .art_renderer import scene, render
 from .near_ai import creative_direction,apply_curatorial_theme
 from .storage import ContentStore,content_store
 
@@ -21,7 +21,8 @@ def sunday_schedule(now=None):
             "beacon_at":int((sunday+timedelta(hours=18)).timestamp())}
 
 async def run_epoch(factory, settings, *, number, mode, raw, start, end, block, beacon,
-                    selection, source, previous_hash=GENESIS_HASH, start_ns=None, end_ns=None, sealed_records=None, evidence_rpc=None):
+                    selection, source, previous_hash=GENESIS_HASH, start_ns=None, end_ns=None, sealed_records=None, evidence_rpc=None,
+                    asset_mapping=None):
     if mode != settings.execution_mode:
         raise ValueError("Execution mode mismatch")
     if mode != "demo":
@@ -47,6 +48,24 @@ async def run_epoch(factory, settings, *, number, mode, raw, start, end, block, 
         records=validate_snapshot(sealed_records,start_ns or start*10**9,end_ns or end*10**9)
         if sha(canonical(records)).hex()!=source.get("snapshot_hash"):raise ValueError("Sealed observation hash mismatch")
     else:records = snapshot(raw,start,end,start_ns=start_ns,end_ns=end_ns)
+    from .asset_networks import fetch_asset_mapping, validate_asset_mapping, mapped_seed
+    with factory() as db:
+        saved_art=db.get(Artwork,epoch_id)
+        saved_epoch=db.get(Epoch,epoch_id)
+        if saved_art:
+            if asset_mapping is not None and (saved_epoch is None or saved_epoch.payload.get("asset_mapping")!=asset_mapping):
+                raise ValueError("Frozen network mapping cannot change")
+            return saved_art.payload
+        prior_mapping=saved_epoch.payload.get("asset_mapping") if saved_epoch is not None else None
+        has_epoch=saved_epoch is not None
+    if has_epoch:
+        if asset_mapping is not None and asset_mapping!=prior_mapping:
+            raise ValueError("Frozen network mapping cannot change")
+        asset_mapping=prior_mapping
+    elif asset_mapping is None and mode!="demo":
+        asset_mapping=await fetch_asset_mapping(records)
+    if asset_mapping is not None:
+        validate_asset_mapping(asset_mapping,records)
     # Lock and persist exact inputs before calling AI or rendering. A restart reuses
     # the snapshot and first persisted direction, never operator-supplied rerolls.
     with factory.begin() as db:
@@ -80,6 +99,9 @@ async def run_epoch(factory, settings, *, number, mode, raw, start, end, block, 
             payload = {"snapshot":snapshot_ref,"records":records,"block":block,"beacon":beacon,
                        "selection":selection,"source":source,"previous_hash":previous_hash,
                        "freeze_timestamp":source.get("freeze_timestamp",int(time.time())),"merkle_root":root(records),"start_ns":str(start_ns or start*10**9),"end_ns":str(end_ns or end*10**9)}
+            if asset_mapping is not None:
+                payload["asset_mapping"]=asset_mapping
+                payload["asset_mapping_ref"]=store.put(canonical(asset_mapping))
             epoch = Epoch(id=epoch_id,number=number,mode=mode,status="frozen",start=start,end=end,payload=payload)
             db.add(epoch)
             db.flush()
@@ -93,8 +115,13 @@ async def run_epoch(factory, settings, *, number, mode, raw, start, end, block, 
         frozen = epoch.payload
     try:
         records = frozen["records"]
-        stats = statistics(records,start,end)
+        asset_mapping=frozen.get("asset_mapping")
+        if asset_mapping is not None and sha(canonical(asset_mapping)).hex()!=frozen["asset_mapping_ref"]["sha256"]:
+            raise ValueError("Frozen network mapping hash mismatch")
+        stats = statistics(records,start,end,asset_mapping)
         seed = master_seed(number,frozen["merkle_root"],frozen["block"]["hash"],frozen["beacon"]["randomness"],frozen["previous_hash"])
+        if asset_mapping is not None:
+            seed=mapped_seed(seed,asset_mapping)
         with factory() as db:
             persisted_direction = db.get(Epoch,epoch_id).payload.get("creative")
         if persisted_direction is None:
@@ -111,10 +138,12 @@ async def run_epoch(factory, settings, *, number, mode, raw, start, end, block, 
                 epoch=db.get(Epoch,epoch_id)
                 epoch.payload={**epoch.payload,"creative":persisted_direction}
         direction, ai = persisted_direction["direction"], persisted_direction["ai"]
-        manifest=scene(seed,records,stats,direction,start,end,frozen["previous_hash"],number)
+        manifest=scene(seed,records,stats,direction,start,end,frozen["previous_hash"],number,asset_mapping)
         files=render(manifest)
         files["artwork-manifest.json"]=canonical(manifest)
         files["source-snapshot.json"]=canonical(records)
+        if asset_mapping is not None:
+            files["asset-networks.json"]=canonical(asset_mapping)
         files["merkle-proofs.json"]=canonical(proof_index(records))
         files["animation-manifest.json"]=canonical({"version":"motion-v1","seed":seed,"period_seconds":24,"motion":"fixed SVG layers; optional presentation rotation","canonical":"static PNG"})
         refs={name:store.put(data) for name,data in files.items()}
@@ -123,8 +152,10 @@ async def run_epoch(factory, settings, *, number, mode, raw, start, end, block, 
             "snapshot":refs["source-snapshot.json"],"merkle_root":frozen["merkle_root"],"transaction_count":len(records),
             "freeze_timestamp":frozen["freeze_timestamp"],"source":source,"block":frozen["block"],"beacon":frozen["beacon"],
             "selection":frozen["selection"],"master_seed":seed,"previous_artwork_hash":frozen["previous_hash"],
-            "renderer_version":VERSION,"direction":direction,"ai":ai,"curation":persisted_direction.get("curation",{"source":"published_default"}),"files":refs,
+            "renderer_version":manifest["version"],"direction":direction,"ai":ai,"curation":persisted_direction.get("curation",{"source":"published_default"}),"files":refs,
             "trust":{"data_completeness":"provider-trusted; Merkle membership is not a completeness proof", "randomness":"offchain BLS verification; contract stores commitments", "storage":"S3 content-addressed immutable keys" if settings.storage_provider=="s3" else "local content-addressed store; not IPFS-pinned", "image":"static file hash authoritative; replay requires pinned renderer dependencies"}}
+        if asset_mapping is not None:
+            provenance["asset_mapping"]=refs["asset-networks.json"]
         provenance_ref=store.put(canonical(provenance))
         result={"id":epoch_id,"edition":f"ECHO-{number:06d}","number":number,"mode":mode,"title":direction["title"],
                 "description":direction["description"],"composition":direction["composition"],"palette":direction["palette"],

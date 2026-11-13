@@ -11,7 +11,13 @@ from app.services.preflight import validate_contracts
 from app.workers.production import Worker
 from test_dataset import raw
 
-async def test_worker_observes_before_freeze_reuses_inputs_and_waits_for_signer(tmp_path):
+async def test_worker_observes_before_freeze_reuses_inputs_and_waits_for_signer(tmp_path,monkeypatch):
+    from app.services import asset_networks
+    async def registry(records):
+        return asset_networks.build_asset_mapping([
+            {"assetId":"nep141:eth-usdc","blockchain":"eth"},
+            {"assetId":"nep141:wrap.near","blockchain":"near"}],records,observed_at=1)
+    monkeypatch.setattr(asset_networks,"fetch_asset_mapping",registry)
     beacon=json.loads((Path(__file__).resolve().parents[2]/"fixtures/sample-epoch/verified-beacon.json").read_text())
     sunday=beacon["released_at"]-18*3600;now=[beacon["released_at"]+30]
     settings=Settings(_env_file=None,app_env="test",execution_mode="live",data_dir=tmp_path,near_intents_partner_jwt="unit-test",first_release_sunday="2026-11-08",near_ai_api_key="",near_nft_contract="",near_auction_contract="")

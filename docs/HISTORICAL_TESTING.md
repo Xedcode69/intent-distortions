@@ -50,6 +50,16 @@ uv run --locked python scripts/test_historical_week.py --sunday 2026-11-08 --ai 
 
 The `required` policy refuses missing/failed AI and never silently falls back. Its output directory is separate from the fallback run. Each directory pins the requested date and starting checkpoint. The AI model can be configured after readiness/public preparation and is pinned once generation initializes its database; use a separate directory for later model changes. Only one collector should use a partner JWT at a time.
 
+## Asset networks and reproducible lookup
+
+New real-data editions use renderer `echo-renderer-3`. Before generation, the runner resolves each exact origin/destination asset ID against the public [1Click token registry](https://docs.agentsonintents.com/api-reference/oneclick/get-supported-tokens). It freezes a minimal registry snapshot (asset IDs and blockchain codes, with no changing prices), the used-asset lookup and its observation time. The mapping is included in the content-addressed provenance as `asset-networks.json` and checked during offline replay. Unlisted historical IDs remain explicitly unresolved; a token symbol or address resemblance never supplies a guessed network.
+
+Resolved networks drive routes, palette categories, recognized-chain diversity, geometry and the AI statistics. The art seed additionally commits to the used asset-to-network assignments. Fetch time and unrelated registry additions cannot reroll that seed. Unknown source records do not count as a recognized chain or enter the recognized-chain entropy calculation; they remain included in the dataset, commitments and total swap count. The public demo shows exact asset and source/destination record coverage and the frozen mapping hash.
+
+Existing renderer-1/2 editions retain their original mapper and seed rules for byte-identical verification. An already generated edition cannot be rewritten with a new mapping. To regenerate a historical demonstration, copy its verified capture, plan, beacon and checkpoint into a fresh directory under ignored `data/replays/`; omit its database and generated content. An optional prepared `asset-networks.json` in that directory must validate against the saved capture; otherwise a new epoch fetches and freezes the registry itself. No Explorer re-download is needed. Registry observations are current metadata, not a claim that the registry was identical at the historical freeze.
+
+New live protocol commitments declare renderer-3, `exact-registry-asset-id-v1` mapping and the registry-bound seed policy. An existing live protocol commitment cannot silently adopt this change; use a separately prepared protocol/database migration before deployment.
+
 ## Exact historical interval
 
 This workflow creates an **isolated first replay edition**. Its default genesis is the previous Sunday at 00:00 UTC, and its endpoint is the drand-selected checkpoint on the requested Sunday. For 8 November, the default start is 1 November 2026 00:00 UTC. Use `--start <unix-seconds>` to set an explicit earlier checkpoint. This is not automatically a reconstruction of an already-existing production edition or a Monday–Sunday calendar week.

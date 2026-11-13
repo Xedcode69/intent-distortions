@@ -4,7 +4,9 @@ export type HistoricalDemoData = {
   schema:string;sunday:string;captured_at:number;interval:{start:number;end:number;end_ns:string};
   artwork:{title:string;description:string;composition:string;ai_provider:string;image_hash:string;seed:string;merkle_root:string};
   statistics:{total_swaps:number;unique_chains:number;particle_count:number;chains?:Record<string,number>;
-    dominant_routes?:Record<string,number>;activity?:number[];public_volume_usd?:string;volume_coverage?:number};
+    dominant_routes?:Record<string,number>;activity?:number[];public_volume_usd?:string;volume_coverage?:number;
+    network_mapping?:{policy:string;sha256:string;observed_at:number;total_assets:number;resolved_assets:number;
+      unresolved_assets:number;total_records:number;source_records_mapped:number;destination_records_mapped:number}};
   checkpoint:{height:number;hash:string;timestamp_ns:string};beacon:{round:number;released_at:number;randomness:string};
   snapshot_sha256:string;provenance_sha256:string;
   verification:{checks:Record<string,boolean>;scope:string;rerendered_before_publication:boolean};

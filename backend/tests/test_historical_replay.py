@@ -15,6 +15,16 @@ PLAN = ReplayPlan.build("2026-11-08", now=NOW)
 BEACON = json.loads((Path(__file__).resolve().parents[2] / "fixtures/sample-epoch/verified-beacon.json").read_text())
 
 
+@pytest.fixture(autouse=True)
+def mock_token_registry(monkeypatch):
+    from app.services import asset_networks
+    async def fetch(records):
+        return asset_networks.build_asset_mapping([
+            {"assetId":"nep141:eth-usdc","blockchain":"eth"},
+            {"assetId":"nep141:wrap.near","blockchain":"near"}],records,observed_at=1)
+    monkeypatch.setattr(asset_networks,"fetch_asset_mapping",fetch)
+
+
 class MockMainnet:
     def __init__(self): self.lookups = 0
 
@@ -117,6 +127,7 @@ async def test_full_mocked_replay_caches_capture_verifies_art_and_detects_tamper
     assert sum(published["statistics"]["activity"]) == 5
     assert sum(published["statistics"]["chains"].values()) == 5
     assert published["statistics"]["dominant_routes"]
+    assert published["statistics"]["network_mapping"]["source_records_mapped"] == 5
     assert published["artwork"]["image_hash"] == first["artwork"]["image_hash"]
     assert set(published["files"]) == {"artwork.png", "artwork-manifest.json"}
     assert len(list(public.rglob("*.*"))) == 3

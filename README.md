@@ -80,6 +80,8 @@ Merkle proofs establish membership in the published snapshot; they do not prove 
 
 The renderer has six distinct mathematical families, bounded particle/route geometry, seeded substreams and an edition signature. The first valid AI direction is persisted, so replay uses recorded direction and exact scene primitives. The NFT rejects repeated epoch/image hashes. These properties provide reproducibility and practical uniqueness; they do not guarantee that every pair of images is perceptually dissimilar.
 
+New real-data editions use renderer-3 and an exact asset-ID lookup from the public token registry. The registry snapshot and network assignments are frozen with provenance, drive network routes and visual statistics, and bind the art seed. Unresolved historical assets stay explicitly unknown, with coverage shown in the demo. Previously frozen renderer-1/2 editions keep their original lookup and seed rules. See the [registry-aware demo report](docs/reports/2026-11-08-network-mapping.md).
+
 Onchain views are authoritative for ownership, highest bids and treasury balances. The receipt index contains finalized receipts observed by the worker or submitted by the first-party wallet flow; historical bid coverage is explicitly partial. Contracts store commitments and do not verify drand onchain. Worker signing does not authorize treasury withdrawals.
 
 Read [contract operations](docs/CONTRACTS.md), [algorithms](docs/ALGORITHMS.md), [provenance](docs/PROVENANCE.md), [privacy](docs/PRIVACY.md), [security](docs/SECURITY.md) and [API](docs/API.md).

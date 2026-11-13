@@ -7,6 +7,7 @@ from .art_seed import random_value
 from .art_statistics import chain
 
 VERSION = "echo-renderer-2"
+NETWORK_VERSION = "echo-renderer-3"
 SIZE = 1440
 
 def scene_v1(seed, records, stats, direction, start, end, previous_hash, epoch):
@@ -74,19 +75,20 @@ def scene_v1(seed, records, stats, direction, start, end, previous_hash, epoch):
     return {"version": "echo-renderer-1", "width": SIZE, "height": SIZE, "background": "#080C13", "family": family,
             "shapes": shapes, "mapping": {"palette": "source-chain index → persisted creative palette", "particles": "createdAtTimestamp → angle; log USD → radius and light", "geometry": "chain entropy → deformation; composition → trajectory", "inheritance": {"previous_hash": previous_hash, "radius": inherited_radius}, "signature": "64-bit epoch + 128-bit seed constellation"}}
 
-def scene(seed,records,stats,direction,start,end,previous_hash,epoch):
+def scene(seed,records,stats,direction,start,end,previous_hash,epoch,asset_mapping=None):
     """Bounded v2 scene: route aggregation + six distinct geometry systems."""
     from collections import Counter
     rand=lambda label,i:random_value(seed,label,i)
     colors=direction["palette"];family=direction["composition"];diversity=stats["chain_diversity_score"]
-    names=sorted({chain(r["origin_asset"]) for r in records}|{chain(r["destination_asset"]) for r in records}) or ["Unmapped"]
+    resolve=lambda asset:chain(asset,asset_mapping)
+    names=sorted({resolve(r["origin_asset"]) for r in records}|{resolve(r["destination_asset"]) for r in records}) or ["Unmapped"]
     shapes=[]
     def line(layer,points,color,width=1,alpha=90):
         shapes.append({"kind":"line","layer":layer,"points":[[round(x,3),round(y,3)] for x,y in points],"color":color,"width":width,"alpha":alpha})
     def dot(layer,x,y,r,color,alpha=180):shapes.append({"kind":"dot","layer":layer,"center":[round(x,3),round(y,3)],"radius":round(r,3),"color":color,"alpha":alpha})
     def point(radius,angle,ratio=.82):return (720+radius*math.cos(angle),720+radius*math.sin(angle)*ratio)
     anchors={c:point(500,math.tau*i/len(names),1) for i,c in enumerate(names)}
-    routes=Counter((chain(r["origin_asset"]),chain(r["destination_asset"])) for r in records)
+    routes=Counter((resolve(r["origin_asset"]),resolve(r["destination_asset"])) for r in records)
     for i,((origin,dest),frequency) in enumerate(sorted(routes.items())):
         a,b=anchors[origin],anchors[dest];control=(720+(rand("routes",i)-.5)*520,720+(rand("routes",i+len(routes))-.5)*520)
         points=[((1-t)**2*a[0]+2*(1-t)*t*control[0]+t*t*b[0],(1-t)**2*a[1]+2*(1-t)*t*control[1]+t*t*b[1]) for t in [j/48 for j in range(49)]]
@@ -112,12 +114,12 @@ def scene(seed,records,stats,direction,start,end,previous_hash,epoch):
         record=records[min(len(records)-1,i*len(records)//max(count,1))] if records else None
         theta=math.tau*(record["created_at_unix"]-start)/(end-start) if record else 0
         theta+=(rand("particles",i)-.5)*.25
-        radius=75+475*math.sqrt(rand("layout",i));color=colors[names.index(chain(record["origin_asset"]))%len(colors)] if record else colors[0]
+        radius=75+475*math.sqrt(rand("layout",i));color=colors[names.index(resolve(record["origin_asset"]))%len(colors)] if record else colors[0]
         if family=="spiral_constellation":theta+=radius/80+phase
         elif family=="crystalline":theta=phase+round((theta-phase)*symmetry/math.tau)*math.tau/symmetry+(rand("geometry",i)-.5)*.14;radius=round(radius/80)*80
         elif family=="fractal_branches":theta=phase+round((theta-phase)*symmetry/math.tau)*math.tau/symmetry+math.sin(radius/70)*.24
         if family=="particle_nebula":
-            cluster=names.index(chain(record["origin_asset"])) if record else 0
+            cluster=names.index(resolve(record["origin_asset"])) if record else 0
             cx,cy=point(230,phase+math.tau*cluster/len(names),.8)
             spread=math.sqrt(-2*math.log(max(rand("nebula",i),1e-10)))*110
             x=cx+spread*math.cos(theta+rand("nebula",i+count)*math.tau);y=cy+spread*math.sin(theta)
@@ -142,8 +144,12 @@ def scene(seed,records,stats,direction,start,end,previous_hash,epoch):
     bits=f"{epoch:064b}"+f"{int(seed[:32],16):0128b}"
     for i,bit in enumerate(bits):
         x,y=point(640 if bit=="1" else 631,math.tau*i/192,1);dot("signature",x,y,2 if bit=="1" else .7,colors[i%len(colors)],180)
-    return {"version":VERSION,"width":SIZE,"height":SIZE,"background":"#080C13","family":family,"shapes":shapes,
+    result={"version":NETWORK_VERSION if asset_mapping is not None else VERSION,"width":SIZE,"height":SIZE,"background":"#080C13","family":family,"shapes":shapes,
         "mapping":{"routes":"aggregated chain pairs; frequency controls intensity","particles":"even temporal sample; log public USD controls prominence","palette":"source-chain index into persisted direction palette","geometry":"seeded family-specific math; entropy deforms symmetry","inheritance":{"previous_hash":previous_hash,"radius":inherited},"signature":"64-bit edition + 128-bit seed constellation"}}
+    if asset_mapping is not None:
+        from .asset_networks import mapping_commitment
+        result["mapping"]["asset_networks_commitment"]=mapping_commitment(asset_mapping)
+    return result
 
 def render(manifest):
     from io import BytesIO

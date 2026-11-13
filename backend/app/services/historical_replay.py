@@ -334,6 +334,10 @@ async def replay_week(plan, base, directory, *, action="run", rpc=None, collecto
                          start_ns=plan.start * 10**9, end_ns=int(block["timestamp_ns"]), block=block,
                          beacon=beacon, selection=evidence["selection"], previous_hash=GENESIS_HASH, evidence_rpc=rpc,
                          source={**source, "reconciled": True, "freeze_rule": plan.public()["status_policy"]})
+        mapping_file=directory / "asset-networks.json"
+        if mapping_file.exists():
+            from .asset_networks import validate_asset_mapping
+            arguments["asset_mapping"]=validate_asset_mapping(json.loads(mapping_file.read_bytes()),records)
         artwork = await run_epoch(factory, cfg, **arguments)
         report["stages"][stage] = {"status": "passed" if plan.ai == "required" else "fallback_selected", "provider": artwork["ai_provider"]}
         stage = "verification"
@@ -400,7 +404,7 @@ async def replay_week(plan, base, directory, *, action="run", rpc=None, collecto
                                    "hint": {"beacon": "Check the scheduled beacon and network connection.",
                                             "checkpoint": "A working archival mainnet RPC is required; no latest-block substitute is used.",
                                             "capture": "Check JWT access, full pagination, exact boundaries and saved capture integrity.",
-                                            "art_direction": "Check the requested AI policy and funded model access.",
+                                            "art_direction": "Check public token-registry access, the frozen network mapping and funded AI model access.",
                                             "verification": "Inspect the saved dataset and artifact commitments; frozen data was not reset."}.get(stage, "Inspect the saved replay inputs.")}
         return report
     finally:

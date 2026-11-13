@@ -44,6 +44,20 @@ Six bounded families transform trajectories: orbital, branches, crystalline, flo
 The saved direction influences composition, palette, symmetry and description. It cannot change membership, seed or auction rules. PNG and SVG share scene primitives; raster glow is additional deterministic presentation. Byte-identical replay requires the same Pillow and renderer versions. The image's immutable content hash is authoritative across environments.
 # Renderer-v2 deployment note
 
-New live protocols pin `echo-renderer-2`. It aggregates route pairs and evenly samples the complete ordered interval, capping particles at 2,400. The six families now use distinct constructions: orbital arcs, recursive branching, crystalline triangular meshes, integrated flow fields, radius-twisted spirals, and seeded Gaussian nebula clusters. Separate HMAC substreams drive each system. Geometry stays bounded at weekly dataset scale. The original renderer-v1 frozen scene remains replayable and its canonical image was not replaced.
+Renderer-v2 editions pin `echo-renderer-2`. It aggregates route pairs and evenly samples the complete ordered interval, capping particles at 2,400. The six families use distinct constructions: orbital arcs, recursive branching, crystalline triangular meshes, integrated flow fields, radius-twisted spirals, and seeded Gaussian nebula clusters. Separate HMAC substreams drive each system. Geometry stays bounded at weekly dataset scale. The original renderer-v1 frozen scene remains replayable and its canonical image was not replaced.
 
 `merkle-proofs.json` for new editions uses the compact `echo-merkle-index-v1` tree-level format. It stores O(n) tree nodes; a selected membership proof is recovered in O(log n) without rebuilding the entire tree for each record. Older exports containing individual proof arrays retain their original hashes.
+
+## Renderer-v3 network lookup and seed
+
+New real-data editions pin `echo-renderer-3`. The public 1Click token registry supplies an exact `assetId → blockchain` relation. `asset-networks.json` freezes a sorted minimal registry, used-asset assignments (or null for unresolved IDs), observation time, fixed public source URL and `exact-registry-asset-id-v1` policy. Ambiguous duplicate identities are rejected. Symbol matching and address-prefix guessing are not used.
+
+Let `B` be the original 32-byte artwork seed above, and `A` the used-asset dictionary from that frozen lookup:
+
+`C = SHA256(JCS({"policy":"exact-registry-asset-id-v1","assets":A}))`
+
+`seed_v3 = SHA256("NEAR_ECHOES_NETWORK_ART_V1" || B || C)`
+
+All concatenated digests are raw bytes. Registry retrieval time and unrelated token additions are excluded from `C`, so they cannot reroll the seed. The entire snapshot still has its own content hash in provenance. Frozen mappings cannot be changed on retry; a revised historical demonstration uses a fresh isolated directory and a newly verified result.
+
+The v2 geometry systems now use resolved networks for route pairs, anchors, palette categories and particle clusters. Entropy uses only recognized source networks and their record count; unresolved rows do not count as an identified blockchain. They remain in the canonical dataset, Merkle tree, total record count and an explicitly unknown visual category. Coverage reports source and destination resolution separately. Offline replay uses the frozen lookup and never calls the current registry. Existing renderer-1/2 artifacts continue to use their saved version's original rules.

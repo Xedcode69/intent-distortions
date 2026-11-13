@@ -69,6 +69,8 @@ def publish_replay(report_path, destination):
         "status_policy":plan.public()["status_policy"], "nft_and_auction":"not_run",
     }
     hashes = {name:sha(data).hex() for name, data in files.items()}
+    if "network_mapping" in artwork["stats"]:
+        summary["statistics"]["network_mapping"]=artwork["stats"]["network_mapping"]
     edition = sha(canonical({"summary":summary, "files":hashes})).hex()
     summary["files"] = {name:{"url":f"/historical-demo/editions/{edition}/{name}", "sha256":digest}
                         for name, digest in hashes.items()}

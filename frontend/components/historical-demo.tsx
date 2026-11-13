@@ -4,6 +4,7 @@ import { ArrowDown, Check, Fingerprint, LoaderCircle, RotateCcw } from "lucide-r
 import { ReplayProgress } from "./replay-progress";
 import { AnimatedArtwork } from "./animated-artwork";
 import { ArtworkStory } from "./artwork-story";
+import { NetworkMappingCoverage } from "./network-mapping-coverage";
 import type { ArtworkScene as Scene, HistoricalDemoData as Demo } from "./historical-demo-types";
 
 type Asset = {url:string;sha256:string};
@@ -54,6 +55,7 @@ export function HistoricalDemo(){
     {state==="error"&&<div className="demo-placeholder" role="alert"><h2>The saved demo could not be verified.</h2><p>{error}</p><button className="button subtle" onClick={()=>location.reload()}>Try again</button></div>}
     {demo&&scene&&state==="ready"&&!storyComplete&&<ArtworkStory key={storyKey} demo={demo} image={image} onComplete={finishStory}/>}
     {demo&&scene&&state==="ready"&&storyComplete&&<><div className="data-warning">Historical release: {demo.sunday} · Captured {utc(demo.captured_at)}. Statuses reflect capture time. No NFT mint or auction was performed.</div>
+      <NetworkMappingCoverage demo={demo}/>
       <button className="button subtle story-replay" onClick={()=>{setStoryComplete(false);setStoryKey(value=>value+1);setTab("artwork");}}><RotateCcw size={14}/> Replay the story</button>
       <div className="tabs" role="group" aria-label="Historical artwork view">{["artwork","animated","layers"].map(value=><button key={value} aria-pressed={tab===value} className={tab===value?"active":""} onClick={()=>setTab(value)}>{value==="artwork"?"Static image":value==="animated"?"Animated view":"Explore the layers"}</button>)}</div>
       <div className="dna-layout"><div className="dna-canvas">{tab==="artwork"?<img src={image} alt={demo.artwork.title}/>:tab==="animated"?<AnimatedArtwork scene={scene} seed={demo.artwork.seed} title={demo.artwork.title}/>:<svg viewBox={`0 0 ${scene.width} ${scene.height}`} role="img" aria-label="Interactive layers of the recorded artwork"><rect width={scene.width} height={scene.height} fill={scene.background}/>{scene.shapes.filter(shape=>visible[shape.layer]).map((shape,index)=>shape.kind==="dot"?<circle key={index} cx={shape.center![0]} cy={shape.center![1]} r={shape.radius} fill={shape.color} opacity={shape.alpha/255}/>:<polyline key={index} points={shape.points!.map(point=>point.join(",")).join(" ")} fill="none" stroke={shape.color} strokeWidth={shape.width} opacity={shape.alpha/255}/>)}</svg>}<span className="overline">{tab==="animated"?"ANIMATED INTERPRETATION · SAVED SCENE":tab==="artwork"?"CANONICAL PNG · HASH CHECKED IN YOUR BROWSER":"INTERACTIVE PRESENTATION · ORIGINAL ARTWORK STAYS FIXED"}</span></div>
@@ -61,7 +63,7 @@ export function HistoricalDemo(){
       <section className="demo-evidence" aria-label="Recorded evidence"><div className="section-heading"><div><span className="eyebrow">FOLLOW THIS RUN</span><h2>From records to a fixed image.</h2></div></div><ol className="demo-steps">{[
         ["Collect",`${demo.statistics.total_swaps.toLocaleString()} successful eligible records. Interval: ${utc(demo.interval.start)} to ${utc(demo.interval.end)}; the exact endpoint is stored in nanoseconds.`],
         ["Select",`Verified drand round ${demo.beacon.round} selected a checkpoint on ${demo.sunday}. Saved mainnet block: ${demo.checkpoint.height.toLocaleString()}.`],
-        ["Commit","Canonical records form a Merkle root. That root, the block hash, beacon, edition number and genesis image hash determine the art seed."],
+        ["Commit",`Canonical records form a Merkle root. That root, ${demo.statistics.network_mapping?"the frozen asset-to-network mapping, ":""}the block hash, beacon, edition number and genesis image hash determine the art seed.`],
         ["Render",`${demo.artwork.ai_provider==="near_ai_cloud"?"Recorded NEAR AI direction":"Explicit deterministic fallback direction"} and seeded mathematical geometry produce the image and its exact scene.`],
         ["Verify","Before publication, the runner rebuilt the scene and PNG, checked memberships and commitments, repeated the run, and tested tamper rejection."],
       ].map(([title,description],index)=><li key={title}><span className="step-number">0{index+1}</span><div><h3>{title}</h3><p>{description}</p></div>{index<4&&<ArrowDown size={14}/>}</li>)}</ol></section>
