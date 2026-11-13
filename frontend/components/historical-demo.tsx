@@ -1,20 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
-import { ArrowDown, Check, Fingerprint, LoaderCircle } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { ArrowDown, Check, Fingerprint, LoaderCircle, RotateCcw } from "lucide-react";
 import { ReplayProgress } from "./replay-progress";
+import { AnimatedArtwork } from "./animated-artwork";
+import { ArtworkStory } from "./artwork-story";
+import type { ArtworkScene as Scene, HistoricalDemoData as Demo } from "./historical-demo-types";
 
 type Asset = {url:string;sha256:string};
-type Demo = {
-  schema:string;sunday:string;captured_at:number;interval:{start:number;end:number;end_ns:string};
-  artwork:{title:string;description:string;composition:string;ai_provider:string;image_hash:string;seed:string;merkle_root:string};
-  statistics:{total_swaps:number;unique_chains:number;particle_count:number};
-  checkpoint:{height:number;hash:string;timestamp_ns:string};beacon:{round:number;released_at:number;randomness:string};
-  snapshot_sha256:string;provenance_sha256:string;
-  verification:{checks:Record<string,boolean>;scope:string;rerendered_before_publication:boolean};
-  files:Record<string,Asset>;
-};
-type Shape={kind:string;layer:string;points?:number[][];center?:number[];radius?:number;color:string;width?:number;alpha:number};
-type Scene={width:number;height:number;background:string;shapes:Shape[]};
 const layers:Record<string,string>={routes:"Cross-chain routes",geometry:"Seeded geometry",particles:"Transaction moments",inheritance:"Genesis inheritance",signature:"Edition signature"};
 const utc=(seconds:number)=>new Date(seconds*1000).toUTCString();
 async function verifiedBytes(asset:Asset, signal?:AbortSignal){
@@ -30,13 +22,15 @@ async function verifiedBytes(asset:Asset, signal?:AbortSignal){
 export function HistoricalDemo(){
   const [demo,setDemo]=useState<Demo|null>(null),[scene,setScene]=useState<Scene|null>(null),[image,setImage]=useState("");
   const [state,setState]=useState("loading"),[error,setError]=useState(""),[tab,setTab]=useState("artwork"),[verification,setVerification]=useState("");
+  const [storyComplete,setStoryComplete]=useState(false),[storyKey,setStoryKey]=useState(0);
+  const finishStory=useCallback(()=>setStoryComplete(true),[]);
   const [visible,setVisible]=useState<Record<string,boolean>>({routes:true,geometry:true,particles:true,inheritance:true,signature:true});
   useEffect(()=>{
-    const controller=new AbortController();let objectURL="";
+    const controller=new AbortController();let objectURL="",retry:ReturnType<typeof setTimeout>|undefined;
     async function load(){
       try{
         const response=await fetch("/historical-demo/index.json",{signal:controller.signal,cache:"no-store"});
-        if(response.status===404){setState("empty");return;}
+        if(response.status===404){setState("empty");retry=setTimeout(()=>{void load();},5000);return;}
         if(!response.ok)throw new Error("The historical demo is temporarily unavailable.");
         const value:Demo=await response.json();
         if(value.schema!=="echo-historical-demo-v1"||!value.verification.rerendered_before_publication||!Object.values(value.verification.checks).every(Boolean)||value.files["artwork.png"].sha256!==value.artwork.image_hash)throw new Error("The demo publication is incomplete.");
@@ -46,7 +40,7 @@ export function HistoricalDemo(){
         setScene(JSON.parse(new TextDecoder().decode(manifest)));setImage(objectURL);setDemo(value);setState("ready");
       }catch(reason){if(!controller.signal.aborted){setError(reason instanceof Error?reason.message:"Could not load the historical demo.");setState("error");}}
     }
-    void load();return()=>{controller.abort();if(objectURL)URL.revokeObjectURL(objectURL);};
+    void load();return()=>{controller.abort();if(retry)clearTimeout(retry);if(objectURL)URL.revokeObjectURL(objectURL);};
   },[]);
   async function verify(){
     if(!demo)return;setVerification("Checking saved bytes…");
@@ -58,10 +52,12 @@ export function HistoricalDemo(){
     {state==="loading"&&<div className="demo-placeholder" role="status"><LoaderCircle className="spin"/><p>Opening the historical demonstration…</p></div>}
     {state==="empty"&&<div className="demo-placeholder"><Fingerprint size={38}/><h2>The first historical demo is being prepared.</h2><p>No completed real-data replay has been published here yet. Once available, its artwork, capture date and verification evidence will appear below.</p></div>}
     {state==="error"&&<div className="demo-placeholder" role="alert"><h2>The saved demo could not be verified.</h2><p>{error}</p><button className="button subtle" onClick={()=>location.reload()}>Try again</button></div>}
-    {demo&&scene&&state==="ready"&&<><div className="data-warning">Historical release: {demo.sunday} · Captured {utc(demo.captured_at)}. Statuses reflect capture time. No NFT mint or auction was performed.</div>
-      <div className="tabs" role="group" aria-label="Historical artwork view">{["artwork","layers"].map(value=><button key={value} aria-pressed={tab===value} className={tab===value?"active":""} onClick={()=>setTab(value)}>{value==="artwork"?"Canonical artwork":"Explore the layers"}</button>)}</div>
-      <div className="dna-layout"><div className="dna-canvas">{tab==="artwork"?<img src={image} alt={demo.artwork.title}/>:<svg viewBox={`0 0 ${scene.width} ${scene.height}`} role="img" aria-label="Interactive layers of the recorded artwork"><rect width={scene.width} height={scene.height} fill={scene.background}/>{scene.shapes.filter(shape=>visible[shape.layer]).map((shape,index)=>shape.kind==="dot"?<circle key={index} cx={shape.center![0]} cy={shape.center![1]} r={shape.radius} fill={shape.color} opacity={shape.alpha/255}/>:<polyline key={index} points={shape.points!.map(point=>point.join(",")).join(" ")} fill="none" stroke={shape.color} strokeWidth={shape.width} opacity={shape.alpha/255}/>)}</svg>}<span className="overline">{tab==="artwork"?"CANONICAL PNG · HASH CHECKED IN YOUR BROWSER":"INTERACTIVE PRESENTATION · ORIGINAL ARTWORK STAYS FIXED"}</span></div>
-      <aside className="dna-controls"><div className="eyebrow">RECORDED HISTORICAL RESULT</div><h2>{demo.artwork.title}</h2><p>{demo.artwork.description}</p><div className="stat-pair"><span>Successful contributing records</span><b>{demo.statistics.total_swaps.toLocaleString()}</b></div><div className="stat-pair"><span>Source chains</span><b>{demo.statistics.unique_chains}</b></div><div className="stat-pair"><span>Visible transaction sample</span><b>{demo.statistics.particle_count.toLocaleString()} particles</b></div><div className="stat-pair"><span>Composition</span><b>{demo.artwork.composition.replaceAll("_"," ")}</b></div><div className="stat-pair"><span>Creative direction</span><b>{demo.artwork.ai_provider==="near_ai_cloud"?"NEAR AI Cloud":"Deterministic fallback"}</b></div>{tab==="layers"&&Object.entries(layers).map(([key,label])=><label className="toggle-row" key={key}><span>{label}</span><input type="checkbox" checked={visible[key]} onChange={event=>setVisible({...visible,[key]:event.target.checked})}/></label>)}<p className="demo-note">Every eligible record affects the dataset commitment and seed. The renderer uses aggregate routes and a bounded transaction sample.</p></aside></div>
+    {demo&&scene&&state==="ready"&&!storyComplete&&<ArtworkStory key={storyKey} demo={demo} image={image} onComplete={finishStory}/>}
+    {demo&&scene&&state==="ready"&&storyComplete&&<><div className="data-warning">Historical release: {demo.sunday} · Captured {utc(demo.captured_at)}. Statuses reflect capture time. No NFT mint or auction was performed.</div>
+      <button className="button subtle story-replay" onClick={()=>{setStoryComplete(false);setStoryKey(value=>value+1);setTab("artwork");}}><RotateCcw size={14}/> Replay the story</button>
+      <div className="tabs" role="group" aria-label="Historical artwork view">{["artwork","animated","layers"].map(value=><button key={value} aria-pressed={tab===value} className={tab===value?"active":""} onClick={()=>setTab(value)}>{value==="artwork"?"Static image":value==="animated"?"Animated view":"Explore the layers"}</button>)}</div>
+      <div className="dna-layout"><div className="dna-canvas">{tab==="artwork"?<img src={image} alt={demo.artwork.title}/>:tab==="animated"?<AnimatedArtwork scene={scene} seed={demo.artwork.seed} title={demo.artwork.title}/>:<svg viewBox={`0 0 ${scene.width} ${scene.height}`} role="img" aria-label="Interactive layers of the recorded artwork"><rect width={scene.width} height={scene.height} fill={scene.background}/>{scene.shapes.filter(shape=>visible[shape.layer]).map((shape,index)=>shape.kind==="dot"?<circle key={index} cx={shape.center![0]} cy={shape.center![1]} r={shape.radius} fill={shape.color} opacity={shape.alpha/255}/>:<polyline key={index} points={shape.points!.map(point=>point.join(",")).join(" ")} fill="none" stroke={shape.color} strokeWidth={shape.width} opacity={shape.alpha/255}/>)}</svg>}<span className="overline">{tab==="animated"?"ANIMATED INTERPRETATION · SAVED SCENE":tab==="artwork"?"CANONICAL PNG · HASH CHECKED IN YOUR BROWSER":"INTERACTIVE PRESENTATION · ORIGINAL ARTWORK STAYS FIXED"}</span></div>
+      <aside className="dna-controls"><div className="eyebrow">RECORDED HISTORICAL RESULT</div><h2>{demo.artwork.title}</h2><p>{demo.artwork.description}</p><div className="stat-pair"><span>Successful contributing records</span><b>{demo.statistics.total_swaps.toLocaleString()}</b></div><div className="stat-pair"><span>Recognized source chains</span><b>{demo.statistics.chains?Object.keys(demo.statistics.chains).filter(name=>name!=="Unmapped").length:demo.statistics.unique_chains}</b></div><div className="stat-pair"><span>Visible transaction sample</span><b>{demo.statistics.particle_count.toLocaleString()} particles</b></div><div className="stat-pair"><span>Composition</span><b>{demo.artwork.composition.replaceAll("_"," ")}</b></div><div className="stat-pair"><span>Creative direction</span><b>{demo.artwork.ai_provider==="near_ai_cloud"?"NEAR AI Cloud":"Deterministic fallback"}</b></div>{tab==="layers"&&Object.entries(layers).map(([key,label])=><label className="toggle-row" key={key}><span>{label}</span><input type="checkbox" checked={visible[key]} onChange={event=>setVisible({...visible,[key]:event.target.checked})}/></label>)}<p className="demo-note">{tab==="animated"&&"Motion is a presentation of the recorded scene; the canonical image and its hash stay fixed. "}Every eligible record affects the dataset commitment and seed. The renderer uses aggregate routes and a bounded transaction sample.</p></aside></div>
       <section className="demo-evidence" aria-label="Recorded evidence"><div className="section-heading"><div><span className="eyebrow">FOLLOW THIS RUN</span><h2>From records to a fixed image.</h2></div></div><ol className="demo-steps">{[
         ["Collect",`${demo.statistics.total_swaps.toLocaleString()} successful eligible records. Interval: ${utc(demo.interval.start)} to ${utc(demo.interval.end)}; the exact endpoint is stored in nanoseconds.`],
         ["Select",`Verified drand round ${demo.beacon.round} selected a checkpoint on ${demo.sunday}. Saved mainnet block: ${demo.checkpoint.height.toLocaleString()}.`],

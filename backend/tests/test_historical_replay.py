@@ -114,6 +114,9 @@ async def test_full_mocked_replay_caches_capture_verifies_art_and_detects_tamper
     public = tmp_path / "public-demo"
     published = publish_replay(tmp_path / "report.json", public)
     assert published["schema"] == "echo-historical-demo-v1" and published["statistics"]["total_swaps"] == 5
+    assert sum(published["statistics"]["activity"]) == 5
+    assert sum(published["statistics"]["chains"].values()) == 5
+    assert published["statistics"]["dominant_routes"]
     assert published["artwork"]["image_hash"] == first["artwork"]["image_hash"]
     assert set(published["files"]) == {"artwork.png", "artwork-manifest.json"}
     assert len(list(public.rglob("*.*"))) == 3
