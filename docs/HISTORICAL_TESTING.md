@@ -56,6 +56,8 @@ This workflow creates an **isolated first replay edition**. Its default genesis 
 
 The runner verifies the predetermined drand round, derives the target timestamp and independently checks the selected mainnet block, its predecessor and finality. It then uses the exact `[start_ns,end_ns)` interval, complete Explorer pagination and successful eligible records. An empty successful dataset fails this acceptance test rather than producing a misleading example.
 
+New historical captures request only `SUCCESS` records from Explorer, retaining that filter and the date bounds on every cursor page. Unexpected response statuses stop the capture. The one-second lower-bound overlap is removed locally, deposit identities are deduplicated, and the final snapshot checks the exact checkpoint interval again. Unsuccessful records do not contribute to the artwork. Production status reconciliation continues to request all supported statuses.
+
 Historical status is observed **when we capture it now**. Without a capture recorded at the old freeze, the test cannot establish which records were successful at that past instant. It does not test a real-time Sunday observation window, contract deployment, NFT minting, bidding or treasury payment. Those remain separate live/testnet acceptance exercises.
 
 ## Outputs and pass criteria
@@ -92,11 +94,11 @@ The UI labels historical replay as read-only, disables wallet actions and displa
 
 ### Collection progress and the weekly count
 
-The official Explorer OpenAPI specification documents paginated transaction arrays, not a filtered total-count endpoint or a total field in the response. An exact count for this run is therefore established by completing the same pagination, deduplication and exact-boundary filtering used for the artwork. Public daily or rolling transaction totals may cover different records and must not be used as this run's denominator.
+The documented cursor endpoint returns transaction arrays without a total field. A separate, deprecated `/transactions-pages` endpoint can return filtered totals. Smaller time-window counts, with their boundary overlaps subtracted, produced an advance SUCCESS count of 130,086 for the 8 November demo interval; see the [saved count audit](reports/2026-11-01-success-count.md). Such observations are advisory: statuses can change between queries, and the deprecated endpoint can time out. The final contributing count comes from complete pagination, deduplication and exact-boundary validation of the actual capture. Public daily or rolling transaction totals may cover different records and must not be used as this run's denominator.
 
 The historical runner writes an allowlisted `progress.json` with phase, received-row count, pages, elapsed time and the requested interval. The local historical API exposes `GET /api/v1/replay/progress`; the `/demo` page polls it every five seconds. Collection uses an indeterminate progress bar while the total is unknown, then reports the completed capture's unique record count and successful eligible count separately. The bar measures collection completion, not paid generation or verification completion. Stale updates are labelled. No provider records, URLs or credentials enter the progress response. Production mode does not expose this local progress endpoint.
 
-The already-running first real capture was started before native progress-file reporting was added; its observed CLI counters are relayed to the local display without restarting or discarding the in-flight collection. Subsequent runs publish progress directly on each received page.
+The initial all-status collection was paused and then discarded at the owner's request. Its in-memory records are not used by the replacement SUCCESS-only capture. New runs publish progress directly on each received page.
 
 ## Prepare the site's separate Demo section
 

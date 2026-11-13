@@ -278,7 +278,7 @@ async def replay_week(plan, base, directory, *, action="run", rpc=None, collecto
                 report["status"] = "blocked"
                 report["stages"][stage] = {"status": "blocked", "missing": ["NEAR_INTENTS_PARTNER_JWT"]}
                 return report
-            progress("Collecting complete authenticated Explorer pages; one request per five seconds")
+            progress("Collecting SUCCESS-only authenticated Explorer pages; one request per five seconds")
             client = collector or Collector(base.near_intents_explorer_url, base.near_intents_partner_jwt)
             end = (int(block["timestamp_ns"]) + 10**9 - 1) // 10**9
             started = int(clock())
@@ -292,7 +292,8 @@ async def replay_week(plan, base, directory, *, action="run", rpc=None, collecto
                     progress(f"Explorer capture: {pages} pages, {rows} received rows; pagination continues until complete")
                     last_progress = time.monotonic()
             if collector is None:
-                raw, source = await client.collect(plan.start, end, cfg.collector_page_size, on_page=collected_page)
+                raw, source = await client.collect(plan.start, end, cfg.collector_page_size,
+                                                  on_page=collected_page, statuses=("SUCCESS",))
             else:
                 raw, source = await client.collect(plan.start, end, cfg.collector_page_size)
             if source.get("complete") is not True:

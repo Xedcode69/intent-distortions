@@ -32,11 +32,15 @@ class Collector:
                 await self.sleep(5*2**attempt)
         raise ValueError("Explorer retry budget exhausted; epoch remains pending")
 
-    async def collect(self, start, end, page_size=1000, on_page=None):
+    async def collect(self, start, end, page_size=1000, on_page=None, *, statuses=None):
         if not 1 <= page_size <= 1000:
             raise ValueError("Invalid Explorer page size")
+        allowed_statuses = ("SUCCESS", "PROCESSING", "PENDING_DEPOSIT", "INCOMPLETE_DEPOSIT", "FAILED", "REFUNDED")
+        selected_statuses = allowed_statuses if statuses is None else tuple(statuses)
+        if not selected_statuses or any(status not in allowed_statuses for status in selected_statuses):
+            raise ValueError("Invalid Explorer status filter")
         # API start is NON-inclusive: overlap one second and filter exactly locally.
-        params = {"numberOfTransactions": page_size, "direction": "next", "statuses": "SUCCESS,PROCESSING,PENDING_DEPOSIT,INCOMPLETE_DEPOSIT,FAILED,REFUNDED",
+        params = {"numberOfTransactions": page_size, "direction": "next", "statuses": ",".join(selected_statuses),
                   "showTestTxs": "false", "startTimestampUnix": start-1, "endTimestampUnix": end}
         base_query=params.copy()
         seen_cursors, records = set(), {}
@@ -45,6 +49,8 @@ class Collector:
             for _ in range(100_000):
                 page = await self.request(client, params)
                 for raw in page:
+                    if raw.get("status") not in selected_statuses:
+                        raise ValueError("Explorer returned a record outside the requested status filter")
                     rec = normalize(raw)  # malformed or ambiguous records prevent sealing
                     if start <= rec["created_at_unix"] < end:
                         key = record_key(raw)
