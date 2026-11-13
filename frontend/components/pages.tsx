@@ -16,7 +16,7 @@ export function Gallery(){
  return <div className="page-container"><div className="page-title"><div className="eyebrow">A PERMANENT RECORD OF MOVEMENT</div><h1>The collection<span>.</span></h1><p>One edition for every week. Each one a moment we can never return to.</p></div><div className="gallery-toolbar"><span>{arts.length} {arts.length===1?"echo":"echoes"} in the collection</span><div><label>Composition <select value={family} onChange={e=>setFamily(e.target.value)}><option value="all">All compositions</option>{[...new Set(arts.map(a=>a.composition))].map(f=><option value={f} key={f}>{f.replaceAll("_"," ")}</option>)}</select></label><label>Sort <select value={sort} onChange={e=>setSort(e.target.value)}><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></label></div></div><div className="gallery-grid">{sorted.map(a=><ArtCard art={a} key={a.id}/>)}</div>{!sorted.length&&<div className="empty-state"><h2>No echoes here yet.</h2><p>Try a different composition filter.</p></div>}<div className="collection-end"><Fingerprint size={22}/><span>Each echo is one of one. The next is still becoming.</span></div></div>;
 }
 
-export { LiveGenesis as Genesis } from "./live-genesis";
+export { Drops } from "./drops";
 export {EconomyDashboard as Treasury} from "./economy-dashboard";
 
 type Auction={token_id:string;status:string;highest_bid:string;highest_bidder:string|null;min_bid:string;increment:string;end_ns:string;custody_verified:boolean};

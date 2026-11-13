@@ -92,4 +92,6 @@ Read [contract operations](docs/CONTRACTS.md), [NFT traits](docs/NFT_TRAITS.md),
 
 The [secondary marketplace](docs/MARKETPLACE.md) at `/marketplace` supports NEAR listings and escrowed offers. Sellers receive 95%; the 5% royalty is shared monthly across eligible collection NFTs, excluding creator holdings. Permanent on-chain ownership checkpoints fix month-end beneficiaries. Optional mainnet NEAR Intents checkout funds the buyer's NEAR wallet before a separately approved purchase.
 
+`/drops` shows the next weekly release, its beacon and earliest creation time, persisted collection/generation progress, the finished static/animated artwork and previous drops. It refreshes every five seconds without starting generation. The former `/genesis` URL redirects permanently to `/drops`.
+
 MIT-licensed software. NFT ownership does not itself grant copyright or exclusive commercial rights.

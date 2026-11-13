@@ -62,6 +62,7 @@ class Worker:
         start_ns=int(prior_epoch.payload["end_ns"]) if prior_epoch else self.settings.genesis_checkpoint*10**9
         start=start_ns//10**9
         if "selection" not in r.payload:
+            self.state(number,"selecting_checkpoint")
             beacon=await self.fetch_beacon(r.sunday+18*3600)
             target=select_timestamp(number,beacon["randomness"],r.sunday)
             block=await self.rpc.first_block_at(target)
@@ -77,11 +78,17 @@ class Worker:
             self.state(number,"settled" if auction["status"] in ("Settled","Unsold","CreatorMinted") else "auction_active")
             return
         if now<r.freeze_at:
-            raw,evidence=await asyncio.wait_for(self.collector.collect(start,end,self.settings.collector_page_size,on_page=lambda page:persist_page(self.factory,page)),max(1,r.freeze_at-int(self.clock())))
+            from ..services.drop_progress import CollectionProgress
+            progress=CollectionProgress(self.factory,number,self.clock)
+            def on_page(page):
+                persist_page(self.factory,page)
+                progress.page(len(page))
+            raw,evidence=await asyncio.wait_for(self.collector.collect(start,end,self.settings.collector_page_size,on_page=on_page),max(1,r.freeze_at-int(self.clock())))
             completed=int(self.clock())
             if completed>r.freeze_at:
                 self.state(number,"delayed","ObservationCompletedAfterFreeze");return
             records=snapshot(raw,start,end,start_ns=start_ns,end_ns=end_ns)
+            progress.complete(len(raw),len(records))
             ref=self.store.put(canonical(records))
             source={**evidence,"classification":"authenticated_explorer_capture","snapshot_hash":ref["sha256"],"snapshot":ref,
                 "observation_started_at":now,"observation_completed_at":completed,"status_counts":dict(Counter(x["status"] for x in raw)),

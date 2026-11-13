@@ -10,6 +10,7 @@ Local historical mode additionally exposes `GET /api/v1/replay/progress`: allowl
 |---|---|
 | Health/configuration | `GET /health`, `/protocol` (no secret values) |
 | Epochs | `GET /epochs`, `/epochs/current`, `/epochs/{id}`, `/epochs/{id}/statistics`, `/epochs/{id}/provenance` |
+| Drops | `GET /drops?offset=0&limit=12` — next schedule, edition-specific creation progress, latest artwork and paginated archive |
 | Artworks | `GET /artworks`, `/artworks/latest`, `/artworks/{id}`, `/artworks/{id}/dna`, `/artworks/{id}/manifest`, `/artworks/{id}/verify`, `/artworks/{id}/traits` |
 | Files | `GET /content/{sha256}`; local byte validation or production redirect to the immutable artifact CDN |
 | Auctions | `GET /auctions`, `/auctions/active`, `/auctions/{edition-id}`, `/auctions/{edition-id}/bids` |
@@ -31,6 +32,8 @@ Demo generation is restricted to development/demo configuration, loopback client
 No backend endpoint submits user bids. All bids/claims use a wallet-authorized contract transaction. Auction views query finalized onchain state. The bid-history route returns only successful indexed receipts and labels coverage as partial; its empty array is not proof of no historical bids. Undeployed treasury responses contain zero earned revenue. `/analytics/curation` reads the current permitted owner choice from the contract.
 
 The traits route returns frozen artwork attributes and their source/document hashes. Minted editions additionally verify root-level NFT metadata before reporting `published`; conflicting traits return 409. Unminted replay traits do not imply NFT ownership. See [NFT traits](NFT_TRAITS.md) for the metadata schema and legacy behavior.
+
+`/drops` is read-only. It follows the next uncreated live edition independently of older active auctions, reports the scheduled beacon and data-freeze/earliest-creation times separately, and exposes only allowlisted counters and saved generation phases. Totals remain null until a collection pass completes; its eligible count is computed from the successful exact-interval snapshot. Counts reset for each reconciliation pass. Saved artwork becomes visible without triggering another run. Archive entries include image/traits links, source counts, schedule and separate NFT/auction statuses; raw records, provider cursors and credentials are excluded. Preview/replay archives remain labelled and do not advance production edition numbering.
 
 Artwork and epoch lists accept `limit` (1–100) and nonnegative `offset`. Epoch detail omits the full record array and links the immutable snapshot. Production rerender verification requires administrator authorization; public integrity checks remain bounded. The public frontend proxy excludes administrator/demo paths. `/health` reports worker-managed integrations in production and does not imply credentialed acceptance.
 

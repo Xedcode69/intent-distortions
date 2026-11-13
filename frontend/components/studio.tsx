@@ -12,7 +12,7 @@ import {ArtworkTraits} from "./artwork-traits";
 
 export function Loading({error}:{error?:Error|null}) {
  const empty=(error as Error & {status?:number})?.status===404;
- return <div className="empty-state">{error?<><Circle size={30}/><h2>{empty?"The first echo is still becoming.":"The studio is temporarily unavailable."}</h2><p>{empty?"Verified editions will appear after a weekly dataset is frozen, rendered, and published.":error.message}</p>{empty?<Link className="button primary" href="/genesis">Follow the live genesis <ArrowRight size={15}/></Link>:<Button onClick={()=>location.reload()}>Try again <ArrowRight size={15}/></Button>}</>:<><LoaderCircle className="spin" size={28}/><p>Opening the studio…</p></>}</div>;
+ return <div className="empty-state">{error?<><Circle size={30}/><h2>{empty?"The first echo is still becoming.":"The studio is temporarily unavailable."}</h2><p>{empty?"Verified editions will appear after a weekly dataset is frozen, rendered, and published.":error.message}</p>{empty?<Link className="button primary" href="/drops">Follow the next drop <ArrowRight size={15}/></Link>:<Button onClick={()=>location.reload()}>Try again <ArrowRight size={15}/></Button>}</>:<><LoaderCircle className="spin" size={28}/><p>Opening the studio…</p></>}</div>;
 }
 export function Countdown({target}:{target:number}) {
  const [now,setNow]=useState<number>(); useEffect(()=>{setNow(Date.now());const t=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(t);},[]);

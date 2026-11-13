@@ -9,7 +9,7 @@ Suggested presentation:
 * Studio → open the latest artwork.
 * Reveal its DNA → toggle routes, particles, inherited orbit and signature.
 * Provenance → verify all commitments.
-* Live genesis → replay the demo; observe the image hash remains fixed.
+* Drops → inspect the upcoming production schedule, saved replay progress and recorded artwork archive; observe the image hash remains fixed. The page is read-only and does not launch another generation run.
 * Auction → show that real custody and signing are prerequisites.
 
 `uv run --locked python scripts/export_artwork.py` writes the portable frozen bundle under `data/exports/demo-000001/`. `uv run --locked python scripts/verify_epoch.py` checks byte hashes and exact PNG replay. A local freeze cannot be changed by an HTTP reset. Separate experiments need a new disposable database; never reset a production edition or reuse its onchain epoch namespace.

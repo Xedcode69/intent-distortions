@@ -1,2 +1,2 @@
-import { Genesis } from "@/components/pages";
-export default function Page(){return <Genesis/>;}
+import {permanentRedirect} from "next/navigation";
+export default function Page(){permanentRedirect("/drops");}

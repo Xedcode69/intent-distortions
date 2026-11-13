@@ -12,6 +12,10 @@ def test_api_reads_and_recomputes(monkeypatch,tmp_path):
     with TestClient(main.app) as c:
         assert c.get("/api/v1/health").json()["mode"]=="demo"
         a=c.get("/api/v1/artworks/latest").json()
+        feed=c.get('/api/v1/drops').json()
+        assert feed['preview'] and feed['mode']=='demo' and feed['previous'][0]['id']==a['id']
+        assert feed['previous'][0]['records']==a['stats']['total_swaps']
+        assert c.get('/api/v1/drops?limit=1000').status_code==422
         traits=c.get(f'/api/v1/artworks/{a["id"]}/traits').json()
         assert traits["source"]["image_sha256"]==a["image_hash"] and traits["onchain_status"]=="not_published"
         assert traits["edition_attributes"]==[]

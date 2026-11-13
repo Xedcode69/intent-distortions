@@ -181,6 +181,12 @@ def current():
             "collection":"authenticated_explorer","schedule_timezone":"UTC"}
     return {"mode":settings.execution_mode,"status":"demo_fixture" if settings.execution_mode=="demo" else "awaiting_checkpoint", "next_selection":sunday_schedule(),"selected_block":None,"collection":"not_live" if settings.execution_mode=="demo" else "see_ingestion_health", "schedule_timezone":"UTC"}
 
+@app.get("/api/v1/drops")
+def drops(offset:int=0,limit:int=12):
+    if not 0<=offset<=100000 or not 1<=limit<=50:raise HTTPException(422,"Invalid drop pagination")
+    from .services.drops import drop_feed
+    return drop_feed(factory,settings,offset=offset,limit=limit)
+
 
 @app.get("/api/v1/replay/progress")
 def replay_progress():

@@ -116,6 +116,8 @@ async def run_epoch(factory, settings, *, number, mode, raw, start, end, block, 
         job.status="running"; job.attempts+=1; job.updated_at=int(time.time()); job.error=None
         frozen = epoch.payload
     try:
+        from .drop_progress import generation_phase
+        generation_phase(factory,key,"art_direction")
         records = frozen["records"]
         asset_mapping=frozen.get("asset_mapping")
         if asset_mapping is not None and sha(canonical(asset_mapping)).hex()!=frozen["asset_mapping_ref"]["sha256"]:
@@ -154,12 +156,14 @@ async def run_epoch(factory, settings, *, number, mode, raw, start, end, block, 
         direction, ai = persisted_direction["direction"], persisted_direction["ai"]
         if family_selection and direction["composition"]!=family_selection["family"]:
             raise ValueError("Saved direction differs from the verifiable family selection")
+        generation_phase(factory,key,"rendering")
         if renderer_version=="echo-renderer-4":
             from .expressive_renderer import scene_v4
             manifest=scene_v4(seed,records,stats,direction,start,end,frozen["previous_hash"],number,asset_mapping)
         else:
             manifest=scene(seed,records,stats,direction,start,end,frozen["previous_hash"],number,asset_mapping)
         files=render(manifest)
+        generation_phase(factory,key,"preparing_files")
         files["artwork-manifest.json"]=canonical(manifest)
         files["source-snapshot.json"]=canonical(records)
         if asset_mapping is not None:
@@ -196,6 +200,7 @@ async def run_epoch(factory, settings, *, number, mode, raw, start, end, block, 
             db.get(Epoch,epoch_id).status="rendered"
             db.get(Job,key).status="succeeded"
             db.get(Job,key).updated_at=int(time.time())
+            db.get(Job,key).payload={**db.get(Job,key).payload,"phase":"ready"}
         return result
     except Exception as exc:
         with factory.begin() as db:

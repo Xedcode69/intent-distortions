@@ -1,0 +1,5 @@
+export type DropSchedule={number:number;edition:string;sunday:number;window_start:number;window_end:number;beacon_at:number;freeze_at:number;delivery:"creator"|"auction";auction_hours:number|null;month:string};
+export type DropArtwork=DropSchedule&{id:string;mode:string;title:string;description:string;composition:string;image:string;thumbnail:string;image_hash:string;seed:string;start:number;end:number;records:number;source_networks:number;nft_status:string;auction_status:string};
+export type ActiveDrop=DropSchedule&{state:string;phase:string;last_error_type:string|null;artwork:DropArtwork|null;
+ progress:{pass_number:number;received_rows?:number;pages?:number;total_records?:number|null;eligible_records?:number|null;collection_complete?:boolean;updated_at:number|null};selected_block:{height:number;hash:string}|null};
+export type DropFeed={mode:string;as_of:number;preview:boolean;schedule_timezone:string;upcoming:DropSchedule;active:ActiveDrop|null;previous:DropArtwork[];total_previous:number;offset:number;limit:number};
