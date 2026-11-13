@@ -1,0 +1,12 @@
+# Credential-free explanatory demo only. Managed production uses render.yaml.
+services:
+  demo:
+    build:
+      context: .
+      dockerfile: demo/Dockerfile
+    ports: ["127.0.0.1:3001:8080"]
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true

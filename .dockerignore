@@ -1,0 +1,13 @@
+.tools
+.vendor
+.venv
+**/.venv
+.git
+.env*
+**/.env*
+**/.pytest_cache
+data
+**/node_modules
+**/.next
+**/__pycache__
+contracts/target

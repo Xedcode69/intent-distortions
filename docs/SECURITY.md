@@ -1,0 +1,19 @@
+# Security and release boundaries
+
+This is a production release candidate. It has not passed independent contract/security review, credentialed cross-contract acceptance, or managed-cloud recovery drills. [The deployment guide](managed-cloud.md) defines the gates before valuable assets/mainnet operation.
+
+Implemented controls include strict live/production configuration, separate demo assets/database namespaces, server-scoped secrets, hidden credential validation inputs, explicit internal hosts, bounded request bodies and verification/receipt rate limits, no production demo routes, private administration, security headers, and runtime private-service proxying. The frontend and educational demo never receive signing, AI, Explorer or AWS secrets.
+
+Art controls include pinned beacon chain/key/round, BLS checks, unbiased timestamp selection, archival predecessor/finality validation, exact half-open intervals and decimal strings, immutable policy commitments, fixed before-freeze observations, first persisted valid creative output, no production fallback, bounded retries, dataset lineage, content-addressed artifacts, full hash checking and replayable scene primitives. The AI cannot choose financial rules or authorize transactions.
+
+Operational controls include managed PostgreSQL migrations, one session-locked worker, lock ownership checks, durable exact-byte signing journals, pending-outcome reconciliation, nonce blocking, dedicated signing account, bounded signer methods/deposits/gas, conditional S3 writes/checksums, separate reader/writer permissions, Object Lock and HTTPS artifact verification. S3 templates alone do not prove that cloud IAM, backups or alerts have been commissioned.
+
+Contract controls include minter authorization, epoch/image uniqueness, one-of-one metadata commitments, bound initial custody, standard NFT ownership checks, bid minimum/deadline enforcement, anti-sniping, private callbacks, checked integer arithmetic, pull refunds/treasury, debit-before-transfer accounting, custody retry, durable NFT delivery evidence, idempotent settlement reconciliation, and deadline-keyed owner curation. Contract upgrade keys remain a distinct governance trust boundary; the application does not make an upgradeable contract immutable.
+
+Before enabling writes, verify all deployment bindings and code hashes, exercise actual cross-contract gas/callback behavior and refunds, review treasury/governance/signing authority, confirm data coverage and fixed-time observation capacity under the partner API rate limit, test browser/wallet/mobile behavior, and rehearse backup restoration. Do not promote late captures, replay editions or synthetic fixtures into production evidence. Do not erase unknown effects or frozen inputs to force a retry.
+
+The 2026-11-12 npm production dependency audits reported no high/critical findings, with **11 low frontend and 4 low signer findings** from the NEAR SDK's transitive `elliptic`/`secp256k1` chain (GHSA-848j-6mx2-7j84). The supplied signer enforces Ed25519 keys and its signature is independently checked in tests; this does not close the dependency advisory. npm's proposed force fix downgrades SDK major APIs and was not applied. Review these advisories and compatible upstream fixes before release. Native/lockfile tests are not an independent cryptographic audit.
+
+Hashing public deposit identities provides pseudonymity rather than anonymity. Merkle proofs establish membership, not complete coverage, timestamp truth, economic finality or private-shard access. Error logs omit provider bodies/keys. Preserve canonical files, renderer versions and dependency locks: platform/encoder changes can affect future PNG bytes.
+
+Do not publish, submit or transact on mainnet without the owner's explicit approval. No cloud deployment, real NFT mint, bid, treasury transfer or mainnet transaction was performed by this build task.

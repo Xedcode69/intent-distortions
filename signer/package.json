@@ -1,0 +1,1 @@
+{"name":"near-echoes-signer","version":"1.0.0","private":true,"type":"module","engines":{"node":">=22"},"scripts":{"test":"node --test signer.test.mjs"},"dependencies":{"@near-js/crypto":"2.5.1","@near-js/transactions":"2.5.1","@scure/base":"1.2.6"}}

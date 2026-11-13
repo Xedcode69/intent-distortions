@@ -1,0 +1,15 @@
+# Provenance and verification
+
+Live renderer-v2 editions include the committed policy hash, exact freeze time, authenticated complete observation evidence and fixed-time eligibility rules. The latest two eligible observations must agree. This is provider-trusted observation evidence, not a cryptographic provider status-at-time proof. Production storage uses S3/CloudFront; local development retains its SHA-256 filesystem store. `scripts/verify_epoch.py` and `export_artwork.py` select the configured storage provider.
+
+New `merkle-proofs.json` artifacts use `echo-merkle-index-v1`: `leaf_count`, `odd_leaf_policy` and ordered hex `levels`. Reconstruct a sibling path from those levels in logarithmic time. Previously frozen per-record proof exports keep their original format/bytes. Scene files retain the renderer version; the PNG file/hash remains authoritative.
+
+Export with `uv run --locked python scripts/export_artwork.py [edition-id]`. The exported directory contains `artwork.png`, `artwork.svg`, `thumbnail.webp`, `animation-manifest.json`, `artwork-manifest.json`, `source-snapshot.json`, `merkle-proofs.json`, and `provenance.json`.
+
+`uv run --locked python scripts/verify_epoch.py` reads bytes from the configured store and checks provenance and snapshot hashes, ordered Merkle root, record count, seed derivation, database/provenance agreement, every artifact hash, scene/statistics reconstruction and PNG replay. Public verification skips expensive scene reconstruction/replay; production rerender requests require administrator authorization. A modified content-addressed file causes an error rather than a stored-green checkmark. Membership proof verification accepts a supplied record and ordered sibling path.
+
+The source manifest declares synthetic fixture versus authenticated historical capture. Demo evidence can be unverified and is labeled accordingly. A separately recorded real drand beacon is available under `fixtures/sample-epoch/verified-beacon.json`; a valid BLS signature can be checked completely offline. The demo's frozen synthetic evidence is not replaced after generation.
+
+A replay completeness audit must re-run the published query and compare the full ordered capture, including page termination, stable identities, time bounds and observed statuses. The Explorer start filter is exclusive; the collector deliberately queries one second earlier and applies exact local interval membership. Late successful records require reconciliation before a production freeze. A Merkle root alone does not prove source completeness, timestamp truth, economic settlement, or NFT ownership.
+
+NEP-177 `media_hash` and `reference_hash` are base64-encoded raw SHA-256 bytes. Custom dataset, seed, block, renderer and AI fields belong in the referenced extension manifest, not invented standard metadata fields. The contracts commit to those hashes, while the backend performs offchain beacon verification. Onchain signature verification is a future strengthening.

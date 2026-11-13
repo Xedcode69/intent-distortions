@@ -1,0 +1,22 @@
+{
+  "block": {
+    "height": 0,
+    "hash": "11111111111111111111111111111111",
+    "timestamp_ns": "1794132000000000000",
+    "timestamp_seconds": 1794132000,
+    "rpc_network": "fixture",
+    "verified": false
+  },
+  "beacon": {
+    "round": 0,
+    "randomness": "f35ae9aff780d703c80b862dcfad09ac3152deeb9270ad385ae338b7ba0c2e11",
+    "signature": "",
+    "verified": false,
+    "network": "synthetic_fixture"
+  },
+  "selection": {
+    "algorithm": "predetermined-demo-fixture",
+    "selected_timestamp": 1794132000,
+    "verified": false
+  }
+}

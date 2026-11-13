@@ -1,0 +1,154 @@
+# Managed testnet release candidate. Fill all sync:false values before deployment.
+# Do not enable signing or mainnet until the release gates in docs/managed-cloud.md pass.
+previews:
+  generation: "off"
+envVarGroups:
+  - name: echoes-protocol
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: EXECUTION_MODE
+        value: live
+      - key: ECHOES_ROOT
+        value: /app
+      - key: STORAGE_PROVIDER
+        value: s3
+      - key: ALLOW_AI_FALLBACK
+        value: "false"
+      - key: NEAR_NETWORK
+        value: testnet
+      - key: ENABLE_CHAIN_WRITES
+        value: "false"
+      - key: MAINNET_WRITES_APPROVED
+        value: "false"
+      - key: ALLOWED_HOSTS
+        value: '["echoes-api.internal","localhost","127.0.0.1"]'
+      - key: ADMIN_TOKEN
+        generateValue: true
+      - key: PROTOCOL_ID
+        sync: false
+      - key: FIRST_RELEASE_SUNDAY
+        sync: false
+      - key: GENESIS_CHECKPOINT
+        sync: false
+      - key: PUBLIC_ORIGIN
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: NEAR_RPC_URL
+        sync: false
+      - key: NEAR_MAINNET_RPC_URL
+        sync: false
+      - key: NEAR_NFT_CONTRACT
+        sync: false
+      - key: NEAR_AUCTION_CONTRACT
+        sync: false
+      - key: NEAR_MINTER_ACCOUNT
+        sync: false
+      - key: EXPECTED_NFT_CODE_HASH
+        sync: false
+      - key: EXPECTED_AUCTION_CODE_HASH
+        sync: false
+      - key: NEAR_AI_TEXT_MODEL
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: ARTIFACT_PUBLIC_URL
+        sync: false
+services:
+  - type: pserv
+    name: near-echoes-api
+    runtime: docker
+    region: frankfurt
+    plan: 1c-2g
+    numInstances: 1
+    autoDeployTrigger: "off"
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    dockerCommand: /app/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-proxy-headers
+    preDeployCommand: /app/.venv/bin/alembic -c backend/alembic.ini upgrade head
+    envVars:
+      - fromGroup: echoes-protocol
+      - key: SERVICE_ROLE
+        value: api
+      - key: DATABASE_URL
+        fromDatabase:
+          name: near-echoes-db
+          property: connectionString
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+  - type: worker
+    name: near-echoes-worker
+    runtime: docker
+    region: frankfurt
+    plan: 1c-2g
+    numInstances: 1
+    autoDeployTrigger: "off"
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    dockerCommand: /app/.venv/bin/python -m app.workers.production
+    envVars:
+      - fromGroup: echoes-protocol
+      - key: SERVICE_ROLE
+        value: worker
+      - key: DATABASE_URL
+        fromDatabase:
+          name: near-echoes-db
+          property: connectionString
+      - key: NEAR_INTENTS_PARTNER_JWT
+        sync: false
+      - key: NEAR_AI_API_KEY
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: SIGNER_KEY_FILE
+        value: /etc/secrets/near-worker.json
+  - type: web
+    name: near-echoes-web
+    runtime: docker
+    region: frankfurt
+    plan: 0.5c-512mb
+    autoDeployTrigger: "off"
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    envVars:
+      - key: APP_PROFILE
+        value: production
+      - key: BACKEND_URL
+        fromService:
+          type: pserv
+          name: near-echoes-api
+          property: hostport
+  - type: web
+    name: near-echoes-explainer
+    runtime: static
+    autoDeployTrigger: "off"
+    buildCommand: node scripts/package-demo.mjs
+    staticPublishPath: ./dist/demo
+    headers:
+      - path: /*
+        name: Content-Security-Policy
+        value: "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: no-referrer
+databases:
+  - name: near-echoes-db
+    region: frankfurt
+    plan: basic-1gb
+    postgresMajorVersion: "18"
+    diskSizeGB: 10
+    storageAutoscalingEnabled: true
+    databaseName: echoes
+    user: echoes
+    ipAllowList: []
