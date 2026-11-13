@@ -58,6 +58,8 @@ The runner verifies the predetermined drand round, derives the target timestamp 
 
 New historical captures request only `SUCCESS` records from Explorer, retaining that filter and the date bounds on every cursor page. Unexpected response statuses stop the capture. The one-second lower-bound overlap is removed locally, deposit identities are deduplicated, and the final snapshot checks the exact checkpoint interval again. Unsuccessful records do not contribute to the artwork. Production status reconciliation continues to request all supported statuses.
 
+The cursor endpoint excludes test records when `showTestTxs` is omitted. Its flag parser treats any supplied string, including `false`, as enabling test records; the deprecated pages endpoint instead parses `true`/`false` values. The collector therefore omits this flag. Do not copy the pages endpoint's `showTestTxs=false` convention into a cursor request.
+
 Historical status is observed **when we capture it now**. Without a capture recorded at the old freeze, the test cannot establish which records were successful at that past instant. It does not test a real-time Sunday observation window, contract deployment, NFT minting, bidding or treasury payment. Those remain separate live/testnet acceptance exercises.
 
 ## Outputs and pass criteria

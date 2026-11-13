@@ -40,8 +40,10 @@ class Collector:
         if not selected_statuses or any(status not in allowed_statuses for status in selected_statuses):
             raise ValueError("Invalid Explorer status filter")
         # API start is NON-inclusive: overlap one second and filter exactly locally.
+        # Cursor API enables test records by flag presence, even for "false".
+        # Omit showTestTxs entirely to exclude them (the pages API differs).
         params = {"numberOfTransactions": page_size, "direction": "next", "statuses": ",".join(selected_statuses),
-                  "showTestTxs": "false", "startTimestampUnix": start-1, "endTimestampUnix": end}
+                  "startTimestampUnix": start-1, "endTimestampUnix": end}
         base_query=params.copy()
         seen_cursors, records = set(), {}
         async with httpx.AsyncClient(timeout=30) as owned:

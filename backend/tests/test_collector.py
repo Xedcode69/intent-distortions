@@ -49,10 +49,11 @@ async def test_success_only_filter_survives_pagination_and_excludes_boundary_ove
     assert evidence["query"]["statuses"]=="SUCCESS"
     assert all(call["statuses"]=="SUCCESS" and call["startTimestampUnix"]=="99"
                and call["endTimestampUnix"]=="200" for call in calls)
+    assert all("showTestTxs" not in call for call in calls)
 
 async def test_success_only_filter_rejects_provider_status_mismatch():
     async with httpx.AsyncClient(transport=httpx.MockTransport(
-        lambda _:httpx.Response(200,json=[raw(status="FAILED")])) ) as client:
+        lambda _:httpx.Response(200,json=[raw(status="FAILED")]))) as client:
         with pytest.raises(ValueError,match="status filter"):
             await Collector("https://example.test","partner",client,no_sleep).collect(
                 100,200,statuses=("SUCCESS",))
