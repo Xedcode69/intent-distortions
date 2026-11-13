@@ -90,4 +90,6 @@ Onchain views are authoritative for ownership, highest bids and treasury balance
 
 Read [contract operations](docs/CONTRACTS.md), [NFT traits](docs/NFT_TRAITS.md), [algorithms](docs/ALGORITHMS.md), [provenance](docs/PROVENANCE.md), [privacy](docs/PRIVACY.md), [security](docs/SECURITY.md) and [API](docs/API.md).
 
+The [secondary marketplace](docs/MARKETPLACE.md) at `/marketplace` supports NEAR listings and escrowed offers. Sellers receive 95%; the 5% royalty is shared monthly across eligible collection NFTs, excluding creator holdings. Permanent on-chain ownership checkpoints fix month-end beneficiaries. Optional mainnet NEAR Intents checkout funds the buyer's NEAR wallet before a separately approved purchase.
+
 MIT-licensed software. NFT ownership does not itself grant copyright or exclusive commercial rights.

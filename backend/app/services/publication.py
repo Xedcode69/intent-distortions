@@ -17,7 +17,7 @@ async def index_receipt(factory,receipt,contract,token_id,rpc):
             if not log.startswith("EVENT_JSON:"):continue
             import json
             event=json.loads(log[11:])
-            if event.get("standard") not in ("near_echoes","nep171"):continue
+            if event.get("standard") not in ("near_echoes","nep171","near_echoes_market"):continue
             for j,data in enumerate(event.get("data",[])):
                 key=f'{outcome["id"]}:{i}:{j}'
                 header=(await rpc.call("block",{"block_id":outcome["block_hash"]}))["header"]

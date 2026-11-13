@@ -30,6 +30,47 @@ fn contract() -> EchoNFT {
 }
 
 #[test]
+fn permanent_royalty_ownership_uses_exact_month_end_and_last_finalized_owner() {
+    let mut c = contract();
+    let date = calendar::FIRST_EDITION;
+    let token = mint(&mut c, date);
+    ctx("team.testnet", 1, date + calendar::DAY);
+    c.nft_transfer(id("alice.testnet"), token.clone(), None, None);
+    ctx("alice.testnet", 1, date + 2 * calendar::DAY);
+    c.nft_transfer(id("bob.testnet"), token.clone(), None, None);
+    assert_eq!(c.royalty_history.get(&token).unwrap().len(), 1); // Same month overwrites, retaining final owner.
+    ctx("bob.testnet", 1, calendar::cutoff(202611));
+    c.nft_transfer(id("carol.testnet"), token.clone(), None, None);
+    let previous = c.get_royalty_owners(202611, U64(0), 25);
+    assert_eq!(previous["owners"][0]["owner_id"], "bob.testnet");
+    ctx("carol.testnet", 1, calendar::cutoff(202612));
+    c.nft_transfer(id("dave.testnet"), token.clone(), None, None);
+    assert_eq!(
+        c.get_royalty_owners(202611, U64(0), 25)["owners"][0]["owner_id"],
+        "bob.testnet"
+    );
+    assert_eq!(
+        c.get_royalty_owners(202612, U64(0), 25)["owners"][0]["owner_id"],
+        "carol.testnet"
+    );
+}
+
+#[test]
+#[should_panic(expected = "Edition financial rights changed")]
+fn market_cannot_transfer_with_a_stale_reviewed_financial_snapshot() {
+    let mut c = contract();
+    let token = mint(&mut c, calendar::FIRST_EDITION);
+    ctx("team.testnet", 1, calendar::FIRST_EDITION + 1);
+    c.market_transfer(
+        token,
+        id("buyer.testnet"),
+        id("team.testnet"),
+        1,
+        "00".repeat(32),
+    );
+}
+
+#[test]
 fn mint_traits_remain_flat_and_immutable_with_authoritative_calendar_and_wallet() {
     let mut c = contract();
     let date = calendar::FIRST_EDITION;

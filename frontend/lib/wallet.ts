@@ -20,3 +20,9 @@ export async function contractAction(contract:string, network:"testnet"|"mainnet
   try {await fetch("/api/v1/receipts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({transaction_hash:result.transaction.hash,sender:result.transaction.signer_id})});}catch{}
   return result;
 }
+export async function walletAccount(contract:string,network:"testnet"|"mainnet"){
+ const selected=await connectWallet(contract,network);
+ const account=selected.store.getState().accounts.find(a=>a.active)||selected.store.getState().accounts[0];
+ if(!account)throw new Error("Connect your NEAR wallet, then try again.");
+ return account.accountId;
+}

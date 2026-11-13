@@ -21,7 +21,7 @@ class Signer:
         env={**os.environ,"ENABLE_CHAIN_WRITES":str(self.settings.enable_chain_writes).lower(),
              "MAINNET_WRITES_APPROVED":str(self.settings.mainnet_writes_approved).lower(),
              "NEAR_NETWORK":self.settings.near_network,"NEAR_NFT_CONTRACT":self.settings.near_nft_contract,
-             "NEAR_AUCTION_CONTRACT":self.settings.near_auction_contract}
+             "NEAR_AUCTION_CONTRACT":self.settings.near_auction_contract,"NEAR_MARKET_CONTRACT":self.settings.near_market_contract}
         process=await asyncio.create_subprocess_exec(node,str(ROOT/"signer/sign.mjs"),stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE,env=env)
         try:out,error=await asyncio.wait_for(process.communicate(canonical({**payload,"key_file":self.settings.signer_key_file,"account_id":self.settings.near_minter_account})),30)

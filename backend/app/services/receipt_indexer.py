@@ -7,7 +7,9 @@ async def ingest(factory,settings,transaction_hash,sender):
     tx=result.get("transaction",{})
     if result.get("final_execution_status")!="FINAL" or tx.get("hash")!=transaction_hash or tx.get("signer_id")!=sender:
         raise ValueError("Transaction identity/finality mismatch")
-    if tx.get("receiver_id")!=settings.near_auction_contract:raise ValueError("Transaction is not addressed to the configured auction")
-    if "Failure" in result.get("status",{}):raise ValueError("Failed transaction cannot be indexed as a successful bid")
-    await index_receipt(factory,{"transaction_hash":transaction_hash,"receipts_outcome":result.get("receipts_outcome",[])},settings.near_auction_contract,None,rpc)
+    contracts={getattr(settings,k,"") for k in ("near_auction_contract","near_nft_contract","near_market_contract")}-{ "" }
+    if tx.get("receiver_id") not in contracts:raise ValueError("Transaction is not addressed to a configured marketplace, NFT or auction")
+    if "Failure" in result.get("status",{}):raise ValueError("Failed transaction cannot be indexed as successful")
+    for contract in contracts:
+        await index_receipt(factory,{"transaction_hash":transaction_hash,"receipts_outcome":result.get("receipts_outcome",[])},contract,None,rpc)
     return {"verified":True,"transaction_hash":transaction_hash,"source":"finalized NEAR RPC receipts"}

@@ -49,6 +49,7 @@ test("real WASM receipts: keyless accounts, refunds, vault exit, rollover and ve
   const root=worker.rootAccount;
   const nft=await root.createSubAccount("nft",{initialBalance:1000n*N});
   const auction=await root.createSubAccount("auction",{initialBalance:100n*N});
+  const market=await root.createSubAccount("market",{initialBalance:100n*N});
   const operator=await root.createSubAccount("operator",{initialBalance:100n*N});
   const team=await root.createSubAccount("team",{initialBalance:10n*N});
   const treasury=await root.createSubAccount("treasury",{initialBalance:10n*N});
@@ -57,8 +58,10 @@ test("real WASM receipts: keyless accounts, refunds, vault exit, rollover and ve
   console.log("Created test accounts");
   await nft.deploy(fileURLToPath(new URL("echo_nft.wasm",wasm)));
   await auction.deploy(fileURLToPath(new URL("echo_auction.wasm",wasm)));
+  await market.deploy(fileURLToPath(new URL("echo_market.wasm",wasm)));
   await nft.call(nft,"new_economy",{owner_id:root.accountId,minter:operator.accountId,auction_contract:auction.accountId,creator:team.accountId,treasury:treasury.accountId},opts());
   await auction.call(auction,"new_economy",{owner:operator.accountId,nft_contract:nft.accountId,creator:team.accountId,treasury:treasury.accountId,min_bid:String(N),increment:String(N/10n)},opts());
+  await market.call(market,"new",{nft_contract:nft.accountId,primary_auction:auction.accountId,creator:team.accountId},opts());
   console.log("Initialized production WASM contracts");
   await advance(worker,FIRST+6n*WEEK);
   console.log("Advanced sandbox clock to edition schedule");
@@ -112,12 +115,52 @@ test("real WASM receipts: keyless accounts, refunds, vault exit, rollover and ve
   assert.equal((await nft.view("nft_token",{token_id:sold[0]})).owner_id,bob.accountId);
   assert.equal((await nft.view("get_edition_wallet",{token_id:sold[0]})).transfer_pending,false);
   // Secondary buyer inherits the unused right, and cannot use it twice.
-  await bob.call(nft,"nft_transfer",{receiver_id:alice.accountId,token_id:sold[0],approval_id:null,memo:null},opts(1n));
+  for(const who of [alice,bob,team])await who.call(market,"storage_deposit",{},opts(N/10n));
+  const marketExpiry=()=>String(clockValue+7n*86400n*10n**9n);
+  let clockValue=await clock(worker);
+  await bob.call(nft,"nft_approve",{token_id:sold[0],account_id:market.accountId,msg:JSON.stringify({price:String(10n*N),expires_ns:marketExpiry()})},opts(N/100n));
+  let listing=await market.view("get_listing",{token_id:sold[0]});
+  let snapshot=await nft.view("get_market_snapshot",{token_id:sold[0]});
+  await alice.call(market,"buy",{token_id:sold[0],nonce:listing.nonce,rights_hash:snapshot.rights_hash},opts(10n*N+1n));
+  assert.equal((await nft.view("nft_token",{token_id:sold[0]})).owner_id,alice.accountId);
+  assert.equal((await market.view("get_balance",{account:bob.accountId})).credit,String(95n*N/10n));
+  assert.equal((await nft.view("get_edition_wallet",{token_id:sold[0]})).beneficiary,alice.accountId);
+  await bob.call(market,"withdraw_credit",{},opts(1n));assert.equal((await market.view("get_balance",{account:bob.accountId})).credit,"0");
+  // Offer-only sale, including a creator-owned, unfunded edition.
+  await team.call(nft,"nft_approve",{token_id:unsold,account_id:market.accountId,msg:JSON.stringify({price:null,expires_ns:marketExpiry()})},opts(N/100n));
+  listing=await market.view("get_listing",{token_id:unsold});snapshot=await nft.view("get_market_snapshot",{token_id:unsold});
+  await alice.call(market,"make_offer",{token_id:unsold,nonce:listing.nonce,amount:String(4n*N),expires_ns:marketExpiry(),rights_hash:snapshot.rights_hash},opts(4n*N+1n));
+  const offers=await market.view("get_offers",{});assert.equal(offers.length,1);
+  await team.call(market,"accept_offer",{id:offers[0].id},opts(1n));assert.equal((await nft.view("nft_token",{token_id:unsold})).owner_id,alice.accountId);
+  assert.equal((await market.view("get_balance",{account:team.accountId})).credit,String(38n*N/10n));
+  // An old listing with a revoked approval must refund the entire payment.
+  await team.call(nft,"nft_approve",{token_id:all[0],account_id:market.accountId,msg:JSON.stringify({price:String(9n*N),expires_ns:marketExpiry()})},opts(N/100n));
+  listing=await market.view("get_listing",{token_id:all[0]});snapshot=await nft.view("get_market_snapshot",{token_id:all[0]});
+  await team.call(nft,"nft_revoke",{token_id:all[0],account_id:market.accountId},opts(1n));
+  await alice.call(market,"buy",{token_id:all[0],nonce:listing.nonce,rights_hash:snapshot.rights_hash},opts(9n*N+1n));
+  assert.equal((await market.view("get_balance",{account:alice.accountId})).credit,String(9n*N));
+  await alice.call(market,"withdraw_credit",{},opts(1n));assert.equal((await market.view("get_balance",{account:alice.accountId})).credit,"0");
+  const royaltyDate=new Date(Number((await clock(worker))/1_000_000n));const royaltyCycle=royaltyDate.getUTCFullYear()*100+royaltyDate.getUTCMonth()+1;
+  assert.equal((await market.view("get_royalty_month",{cycle:royaltyCycle})).pot,String(7n*N/10n));
+  console.log("Verified noncustodial fixed-price sale, offer acceptance, 95/5 split and revoked-approval refund");
   await alice.call(nft,"withdraw_edition",{token_id:sold[0]},opts(1n));
   await assert.rejects(alice.call(nft,"withdraw_edition",{token_id:sold[0]},opts(1n)));
   const exited=await nft.view("get_edition_wallet",{token_id:sold[0]});
   assert.equal(exited.remaining,String(528n*N/10n));
   const cycle=exited.cycle;await advance(worker,cutoff(cycle)+120n*10n**9n);
+  if(await clock(worker)<cutoff(royaltyCycle))await advance(worker,cutoff(royaltyCycle)+120n*10n**9n);
+  // Transferring after cutoff cannot redirect already-earned royalties.
+  await alice.call(nft,"nft_transfer",{receiver_id:team.accountId,token_id:unsold,approval_id:null,memo:null},opts(1n));
+  for(let count=0;count<24;count++){
+   const config=await market.view("get_config",{});if(config.next_royalty_close>royaltyCycle)break;
+   await root.call(market,"prepare_royalties",{cycle:config.next_royalty_close},opts());
+  }
+  const royalty=await market.view("get_royalty_month",{cycle:royaltyCycle});assert.ok(royalty.ready);assert.equal(royalty.eligible,4);assert.equal(royalty.share,String(175n*N/1000n));
+  const shares=await market.view("get_royalty_shares",{cycle:royaltyCycle,offset:"0",limit:25});
+  assert.equal(shares.filter(s=>s.owner_id===alice.accountId).length,2);assert.equal(shares.filter(s=>s.owner_id===team.accountId).length,0);
+  for(const share of shares)await root.call(market,"pay_royalty",{cycle:royaltyCycle,index:String(share.index)},opts(1n));
+  const royaltyPaid=await market.view("get_royalty_month",{cycle:royaltyCycle});assert.equal(royaltyPaid.pot,"0");assert.equal(royaltyPaid.paid,4);
+  console.log("Verified full-collection month-end royalties, creator exclusion and immutable prior-owner payments");
   for(let c=202612;c<cycle;c=nextMonth(c)){
    await root.call(nft,"close_month",{cycle:c},opts());await root.call(nft,"draw_month",{cycle:c,signature:"",previous_signature:""},opts());
   }
@@ -149,6 +192,6 @@ test("real WASM receipts: keyless accounts, refunds, vault exit, rollover and ve
   await assert.rejects(root.call(nft,"draw_month",{cycle,signature:beacon.signature,previous_signature:beacon.previous_signature},opts()));
   await root.call(nft,"process_treasury",{},opts());const economy=await nft.view("get_economy",{});
   assert.equal(economy.treasury_earned,String(66n*N));assert.equal(economy.treasury_credit,"0");assert.equal(economy.hub_liability,String(528n*N/10n));
-  console.log(JSON.stringify({schema:"echo-economy-sandbox-v1",currency:"sandbox NEAR",gross:"330",treasury:"66",early_withdrawal:"35.2",prize:"176",rollover:"52.8",eligible_tickets:2,drand_host_proof_verified:true,failed_prize_retry_verified:true,no_bid_creator_delivery_verified:true,real_network_deployment:false}));
+  console.log(JSON.stringify({schema:"echo-economy-sandbox-v1",currency:"sandbox NEAR",gross:"330",treasury:"66",early_withdrawal:"35.2",prize:"176",rollover:"52.8",eligible_tickets:2,secondary_gross:"14",royalties:"0.7",royalty_shares:4,secondary_refund_verified:true,drand_host_proof_verified:true,failed_prize_retry_verified:true,no_bid_creator_delivery_verified:true,real_network_deployment:false}));
  }finally{await worker.tearDown();}
 });

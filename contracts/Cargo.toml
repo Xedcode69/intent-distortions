@@ -1,5 +1,5 @@
 [workspace]
-members = ["echo-nft", "echo-auction", "echo-vault"]
+members = ["echo-nft", "echo-auction", "echo-vault", "echo-market"]
 resolver = "2"
 
 [workspace.dependencies]

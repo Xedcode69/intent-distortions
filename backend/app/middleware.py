@@ -8,7 +8,7 @@ class RequestLimits:
     async def __call__(self,scope,receive,send):
         if scope["type"]!="http":return await self.app(scope,receive,send)
         path=scope["path"];peer=(scope.get("client") or ("unknown",))[0]
-        if path.startswith("/api/v1/verify") or path.endswith("/verify") or path=="/api/v1/receipts":
+        if path.startswith("/api/v1/verify") or path.endswith("/verify") or path=="/api/v1/receipts" or path.startswith("/api/v1/marketplace/crosschain"):
             now=time.monotonic();key=(peer,"verify")
             window=self.windows.setdefault(key,deque())
             while window and window[0]<now-60:window.popleft()

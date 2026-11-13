@@ -13,7 +13,7 @@ export async function api<T>(path:string, init?:RequestInit):Promise<T> {
   if(!response.ok) {const body=await response.json().catch(()=>({}));const error=new Error(body.detail||`Request failed (${response.status})`) as Error & {status:number};error.status=response.status;throw error;}
   return response.json();
 }
-export function useAPI<T>(path:string) { return useQuery<T>({queryKey:[path],queryFn:()=>api<T>(path),refetchInterval:path.includes("auctions")||path.includes("economy")||path.includes("epochs/current")||path==="/health"?15000:false}); }
+export function useAPI<T>(path:string) { return useQuery<T>({queryKey:[path],queryFn:()=>api<T>(path),refetchInterval:path.includes("marketplace")||path.includes("auctions")||path.includes("economy")||path.includes("epochs/current")||path==="/health"?15000:false}); }
 export function short(value:string, length=8) {return value.length>length*2?`${value.slice(0,length)}…${value.slice(-length)}`:value;}
 export function date(time:number) { return new Date(time*1000).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric",timeZone:"UTC"}); }
 export function yocto(value:string) {const n=BigInt(value);return `${n/10n**24n}.${(n%10n**24n).toString().padStart(24,"0").slice(0,4)}`;}

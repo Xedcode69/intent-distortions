@@ -43,6 +43,10 @@ envVarGroups:
         sync: false
       - key: NEAR_AUCTION_CONTRACT
         sync: false
+      - key: NEAR_MARKET_CONTRACT
+        value: ""
+      - key: EXPECTED_MARKET_CODE_HASH
+        value: ""
       - key: NEAR_MINTER_ACCOUNT
         sync: false
       - key: EXPECTED_NFT_CODE_HASH
@@ -81,6 +85,10 @@ services:
       - fromGroup: echoes-protocol
       - key: SERVICE_ROLE
         value: api
+      - key: MARKETPLACE_CROSSCHAIN_ENABLED
+        value: "false"
+      - key: NEAR_INTENTS_1CLICK_JWT
+        sync: false
       - key: DATABASE_URL
         fromDatabase:
           name: near-echoes-db

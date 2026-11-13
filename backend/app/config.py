@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     near_mainnet_rpc_url: str = "https://archival-rpc.mainnet.near.org"
     near_nft_contract: str = ""
     near_auction_contract: str = ""
+    near_market_contract: str = ""
+    expected_market_code_hash: str = ""
+    near_intents_1click_jwt: str = Field(default="",repr=False)
+    marketplace_crosschain_enabled: bool = False
     near_intents_explorer_url: str = "https://explorer.near-intents.org/api/v0"
     near_intents_partner_jwt: str = Field(default="",repr=False)
     near_ai_api_key: str = Field(default="",repr=False)
@@ -76,6 +80,10 @@ class Settings(BaseSettings):
         if not 600<=self.reconciliation_delay_seconds<=7200: issues.append("reconciliation delay must be between 600 and 7200 seconds")
         if not self.near_nft_contract or not self.near_auction_contract:
             issues.append("deployed NFT and auction account IDs are required")
+        if self.near_market_contract:
+            if self.near_market_contract in (self.near_nft_contract,self.near_auction_contract,self.near_minter_account,self.near_creator_account):issues.append("marketplace requires a separate account")
+            if len(self.expected_market_code_hash)!=64 or any(c not in "0123456789abcdef" for c in self.expected_market_code_hash):issues.append("reviewed marketplace WASM hash required")
+        if self.marketplace_crosschain_enabled and (not self.near_market_contract or self.near_network!="mainnet"):issues.append("1Click checkout requires a deployed mainnet marketplace")
         if not self.near_minter_account:issues.append("NEAR_MINTER_ACCOUNT is required")
         if not self.economy_enabled:issues.append("production requires the dedicated-account economy")
         if not self.near_creator_account or not self.near_treasury_account:issues.append("NEAR_CREATOR_ACCOUNT and NEAR_TREASURY_ACCOUNT are required")

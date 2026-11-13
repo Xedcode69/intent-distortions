@@ -31,6 +31,7 @@ function render(){document.querySelectorAll("[data-step]").forEach((b,i)=>{if(i=
    if(earlyExit)box.append(datum("Early withdrawal · 40% of allocation",(bid*.8*.4).toFixed(3)+" credits"),datum("Next-month rollover · 60% of allocation",(bid*.8*.6).toFixed(3)+" credits"),note("This edition loses its funded-cycle ticket. Its remainder funds next month without granting a new ticket. A secondary buyer cannot reset the withdrawal."));
    else box.append(datum("Monthly contribution",(bid*.8).toFixed(3)+" credits"),note("One ticket per eligible NFT. At month-end, fresh contract-verified drand randomness chooses one winner for the entire collected pot. Other holders keep their artwork; their contributed balances are consumed by the prize."));
    box.append(note("This panel is a teaching illustration, with no accounts or money. The live contracts use integer yoctoNEAR arithmetic, UTC cutoffs and separately funded gas/storage. They generate no external yield."));
+   box.append(note("Secondary marketplace sales are separate: 95% goes to the seller and 5% funds holder royalties. At UTC month-end, each eligible artwork in the whole collection earns an equal share, excluding team/creator holdings. This does not refill the edition vault or create a raffle ticket. Optional NEAR Intents checkout funds the buyer's NEAR wallet before a separately approved purchase."));
   }
   area.append(box);
  }

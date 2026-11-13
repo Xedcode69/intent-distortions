@@ -35,4 +35,7 @@ async def validate_contracts(settings,rpc=None):
             result=await rpc.call("query",{"request_type":"view_account","finality":"final","account_id":account})
             if base58.b58decode(result["code_hash"]).hex()!=expected:raise ValueError("Deployed contract WASM hash mismatch")
         elif settings.enable_chain_writes:raise ValueError("Reviewed WASM hashes required for writes")
+    if settings.near_market_contract:
+        from .marketplace import validate_market
+        await validate_market(settings,rpc)
     return {"network":settings.near_network,"contracts":"bindings_and_policy_verified","wasm_hashes_pinned":bool(settings.expected_nft_code_hash and settings.expected_auction_code_hash)}

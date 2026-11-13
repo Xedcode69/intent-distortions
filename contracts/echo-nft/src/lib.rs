@@ -16,6 +16,7 @@ mod calendar;
 mod economy;
 #[cfg(test)]
 mod economy_tests;
+mod royalty_owners;
 use economy::{Economy, Edition};
 
 #[near_sdk::ext_contract(ext_economy_receiver)]
@@ -86,6 +87,8 @@ pub struct EchoNFT {
     auction_contract: Option<AccountId>,
     deliveries: LookupMap<TokenId, Delivery>,
     economy: Option<Economy>,
+    royalty_tokens: near_sdk::collections::Vector<String>,
+    royalty_history: LookupMap<String, near_sdk::collections::Vector<royalty_owners::Checkpoint>>,
 }
 
 #[near]
@@ -118,6 +121,8 @@ impl EchoNFT {
             auction_contract: None,
             deliveries: LookupMap::new(Key::Deliveries),
             economy: None,
+            royalty_tokens: near_sdk::collections::Vector::new(b"royalty_tokens".to_vec()),
+            royalty_history: LookupMap::new(b"royalty_history".to_vec()),
         }
     }
 
@@ -165,7 +170,51 @@ impl EchoNFT {
         self.deliveries.get(&token_id).filter(|d| d.confirmed)
     }
     pub fn get_config(&self) -> near_sdk::serde_json::Value {
-        near_sdk::serde_json::json!({"minter":self.minter,"auction_contract":self.auction_contract,"version":if self.economy.is_some(){"echo-nft-3"}else{"echo-nft-2"},"economy":self.economy.is_some(),"trait_schema":"echo-nft-traits-v1"})
+        near_sdk::serde_json::json!({"minter":self.minter,"auction_contract":self.auction_contract,"version":if self.economy.is_some(){"echo-nft-3"}else{"echo-nft-2"},"economy":self.economy.is_some(),"trait_schema":"echo-nft-traits-v1","market_transfer_schema":"echo-market-transfer-v1","royalty_ownership_schema":"monthly-finalized-owner-v1"})
+    }
+
+    pub fn get_market_snapshot(&self, token_id: String) -> near_sdk::serde_json::Value {
+        let owner = self.tokens.owner_by_id.get(&token_id).expect("Unknown NFT");
+        let edition = self
+            .economy
+            .as_ref()
+            .and_then(|e| e.editions.get(&token_id));
+        let before_cutoff = edition
+            .as_ref()
+            .and_then(|d| d.cycle)
+            .map(|c| env::block_timestamp() < calendar::cutoff(c));
+        let bytes=near_sdk::serde_json::to_vec(&near_sdk::serde_json::json!({"owner":owner,"edition":edition,"before_cutoff":before_cutoff,"royalty_cycle":calendar::cycle(env::block_timestamp())})).unwrap();
+        near_sdk::serde_json::json!({"owner_id":owner,"rights_hash":beacon::hex(&env::sha256(&bytes))})
+    }
+
+    /// Approval, expected seller and reviewed financial rights are checked in the
+    /// same receipt as the transfer, closing withdrawal/ownership/cutoff races.
+    #[payable]
+    pub fn market_transfer(
+        &mut self,
+        token_id: String,
+        receiver_id: AccountId,
+        seller: AccountId,
+        approval_id: u64,
+        rights_hash: String,
+    ) {
+        let snapshot = self.get_market_snapshot(token_id.clone());
+        assert_eq!(
+            snapshot["owner_id"].as_str(),
+            Some(seller.as_str()),
+            "Seller changed"
+        );
+        assert_eq!(
+            snapshot["rights_hash"].as_str(),
+            Some(rights_hash.as_str()),
+            "Edition financial rights changed"
+        );
+        self.nft_transfer(
+            receiver_id,
+            token_id,
+            Some(approval_id),
+            Some("secondary marketplace sale".into()),
+        );
     }
 }
 
@@ -272,6 +321,8 @@ impl EchoNFT {
             Some(metadata),
             None,
         );
+        self.royalty_tokens.push(&token_id);
+        self.record_royalty_owner(&token_id, false);
         let total = env::storage_byte_cost()
             .as_yoctonear()
             .checked_mul((env::storage_usage() - initial) as u128)

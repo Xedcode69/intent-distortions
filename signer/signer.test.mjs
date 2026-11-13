@@ -29,6 +29,12 @@ test("SDK-encoded transaction verifies against the signing key and enforces scop
     await assert.rejects(execute({...request,method:"fund_edition_wallet",deposit:"1"},env),/zero deposit/);
     const maintenance=await execute({...request,method:"close_month",args:{cycle:202612}},env);
     assert.ok(maintenance.transaction_hash);
+    const marketEnv={...env,NEAR_MARKET_CONTRACT:"market.testnet"};
+    const payment={...request,receiver_id:"market.testnet",method:"pay_royalty",args:{cycle:202612,index:"0"},deposit:"1"};
+    assert.ok((await execute(payment,marketEnv)).transaction_hash);
+    await assert.rejects(execute({...payment,deposit:"0"},marketEnv),/one yocto/);
+    await assert.rejects(execute({...payment,method:"buy"},marketEnv),/allowlist/);
+    await assert.rejects(execute({...payment,method:"withdraw_credit"},marketEnv),/allowlist/);
     await assert.rejects(execute({...request,deposit:"100000000000000000000001"},env),/limits/);
     await assert.rejects(execute(request,{...env,ENABLE_CHAIN_WRITES:"false"}),/disabled/);
     await assert.rejects(execute(request,{...env,NEAR_NETWORK:"mainnet"}),/not approved/);

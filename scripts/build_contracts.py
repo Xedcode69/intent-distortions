@@ -22,7 +22,7 @@ def main():
     if args.test:
         subprocess.run([*cargo,"test","--locked","--manifest-path",manifest,"--workspace"],check=True,cwd=ROOT)
     subprocess.run([*cargo,"build","--locked","--release","--target","wasm32-unknown-unknown","--manifest-path",manifest,"--workspace"],check=True,cwd=ROOT)
-    hashes = {name:hashlib.sha256((out/name).read_bytes()).hexdigest() for name in ("echo_vault.wasm","echo_nft.wasm","echo_auction.wasm")}
+    hashes = {name:hashlib.sha256((out/name).read_bytes()).hexdigest() for name in ("echo_vault.wasm","echo_nft.wasm","echo_auction.wasm","echo_market.wasm")}
     (embedded/"hashes.json").write_text(json.dumps(hashes,indent=2)+"\n",encoding="utf-8")
     print(json.dumps(hashes,indent=2))
 

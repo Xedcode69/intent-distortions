@@ -20,9 +20,9 @@ class EconomyKeeper:
             response.raise_for_status()
             return verify_beacon(response.json(),round_number)
 
-    async def act(self,contract,method,args,label):
+    async def act(self,contract,method,args,label,deposit="0"):
         try:
-            receipt=await self.writer.submit(f"economy:{method}:{label}:{self.bucket}",contract,method,args)
+            receipt=await self.writer.submit(f"economy:{method}:{label}:{self.bucket}",contract,method,args,deposit)
         except OutcomeUnknown:
             raise  # Never reserve another nonce until this exact transaction is reconciled.
         except RuntimeError as exc:
@@ -105,3 +105,29 @@ class EconomyKeeper:
                     d=await self.rpc.view(nft,"get_edition_wallet",{"token_id":token})
                     ready=ready and d["wallet_status"]=="Funded" and not d["transfer_pending"]
                 if ready:await self.act(nft,"close_month",{"cycle":cycle},str(cycle))
+        if self.settings.near_market_contract:
+            await self.marketplace_tick(now_ns)
+
+    async def marketplace_tick(self,now_ns):
+        from datetime import datetime,timezone
+        from .marketplace import validate_market
+        market=self.settings.near_market_contract
+        config=await validate_market(self.settings,self.rpc)
+        cycle=config["next_royalty_close"];year,month=divmod(cycle,100)
+        cutoff=int(datetime(year+(month==12),1 if month==12 else month+1,1,tzinfo=timezone.utc).timestamp())*10**9
+        if now_ns>=cutoff:
+            m=await self.rpc.view(market,"get_royalty_month",{"cycle":cycle})
+            if not m["ready"] and m["pending_sales"]==0:
+                await self.act(market,"prepare_royalties",{"cycle":cycle},f'{cycle}:{m["processed"]}')
+        offset=0
+        while True:
+            months=await self.rpc.view(market,"get_royalty_months",{"offset":offset,"limit":100})
+            for m in months:
+                if not m["ready"] or int(m["share"])==0 or m["paid"]==m["eligible"]:continue
+                for start in range(0,m["eligible"],100):
+                    rows=await self.rpc.view(market,"get_royalty_shares",{"cycle":m["cycle"],"offset":str(start),"limit":100})
+                    for share in rows:
+                        if share["status"] in ("Claimable","Retryable"):
+                            await self.act(market,"pay_royalty",{"cycle":m["cycle"],"index":str(share["index"])},f'{m["cycle"]}:{share["index"]}',"1")
+            if len(months)<100:break
+            offset+=len(months)

@@ -5,7 +5,7 @@ import { ArrowUpRight, Menu, X, Wallet, Activity } from "lucide-react";
 import { useState } from "react";
 import { useAPI, type Health } from "@/lib/api";
 import { connectWallet } from "@/lib/wallet";
-const links=[["/","Studio"],["/genesis","Live genesis"],["/gallery","Collection"],["/demo","Demo"],["/economy","Economy"]];
+const links=[["/","Studio"],["/genesis","Live genesis"],["/gallery","Collection"],["/marketplace","Market"],["/demo","Demo"],["/economy","Economy"]];
 export function Mark(){return <svg width="34" height="34" viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M7 30V10l26 20V10M14 10v20M26 10v20" stroke="currentColor" strokeWidth="2"/><circle cx="20" cy="20" r="18" stroke="currentColor" opacity=".35"/></svg>;}
 export function Shell({children}:{children:React.ReactNode}) {
  const path=usePathname(), [open,setOpen]=useState(false),[message,setMessage]=useState("");

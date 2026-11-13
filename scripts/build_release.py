@@ -46,7 +46,7 @@ files["render.yaml"]=yaml.safe_dump(blueprint,sort_keys=False).encode()
 for name in ["production_preflight.py","verify_epoch.py","export_artwork.py","validate_deployment.py","test_historical_week.py","serve_replay.py","publish_replay_demo.py","build_contracts.py","test_economy_sandbox.ps1"]:
     files[f"scripts/{name}"]=(ROOT/"scripts"/name).read_bytes()
 files["fixtures/sample-epoch/verified-beacon.json"]=(ROOT/"fixtures/sample-epoch/verified-beacon.json").read_bytes()
-for name in ["echo_nft.wasm","echo_auction.wasm","echo_vault.wasm"]:
+for name in ["echo_nft.wasm","echo_auction.wasm","echo_vault.wasm","echo_market.wasm"]:
     path=ROOT/"contracts/target/wasm32-unknown-unknown/release"/name
     if not path.exists():raise SystemExit("Build both current contract WASM artifacts before packaging")
     files[f"artifacts/{name}"]=path.read_bytes()

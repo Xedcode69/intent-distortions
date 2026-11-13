@@ -896,6 +896,7 @@ impl EchoNFT {
                 e.editions.insert(token, &d);
             }
         }
+        self.record_royalty_owner(token, true);
     }
     pub(crate) fn economic_transfer_pending(&mut self, token: &String, pending: bool) {
         if let Some(e) = &mut self.economy {

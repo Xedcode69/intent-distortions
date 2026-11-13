@@ -2,7 +2,7 @@ param([string]$CaFile = "")
 $ErrorActionPreference = 'Stop'
 $taskRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $taskContracts = Join-Path $taskRoot 'contracts'
-foreach ($taskName in @('echo_nft.wasm','echo_auction.wasm','echo_vault.wasm')) {
+foreach ($taskName in @('echo_nft.wasm','echo_auction.wasm','echo_vault.wasm','echo_market.wasm')) {
     if (-not (Test-Path -LiteralPath (Join-Path $taskContracts "target/wasm32-unknown-unknown/release/$taskName"))) {
         throw 'Build current contracts first: uv run --locked python scripts/build_contracts.py --test'
     }
