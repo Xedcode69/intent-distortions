@@ -2,7 +2,10 @@
 
 This runs the same site and financial contracts as production, with separate
 testnet accounts and a test-only clock. No accounts, keys, deploys or mints are
-created by preparation. Actual testnet acceptance is pending account configuration.
+created by preparation. [Initial public testnet deployment is now verified](reports/testnet-deployment-2026-11-14.md):
+genesis is in the team wallet and the first synthetic auction is open. Start
+with the wallet acceptance steps below; fresh-workspace deployment instructions
+remain available for reproducing the setup.
 
 The saved historical genesis keeps its image, seed, traits and provenance.
 Five additional **synthetic** editions exercise auctions and monthly outcomes;

@@ -9,6 +9,40 @@ from .testnet_profile import is_lab, validate_clock_build
 from .near_rpc import NearRPC
 from .canonical_data import canonical, sha
 
+CLOCK_STATUS_TIMEOUT = 12
+
+
+class _ReadSnapshot:
+    """One request's deduplicated public RPC reads, never reused across requests."""
+    def __init__(self, rpc):
+        self.rpc, self.pending = rpc, {}
+
+    async def _read(self, kind, *args):
+        key = (kind, json.dumps(args, sort_keys=True))
+        if key not in self.pending:
+            self.pending[key] = asyncio.create_task(getattr(self.rpc, kind)(*args))
+        return await self.pending[key]
+
+    async def call(self, method, args):
+        return await self._read("call", method, args)
+
+    async def view(self, account, method, args):
+        return await self._read("view", account, method, args)
+
+
+async def _verified_clock_configs(config, rpc):
+    snapshot = _ReadSnapshot(rpc)
+    accounts = (config.near_nft_contract, config.near_auction_contract, config.near_market_contract)
+    # Fetch independent policy, code and clock reads together. The existing
+    # preflight then validates those exact responses without duplicate requests.
+    await asyncio.gather(snapshot.call("status", {}),
+        *(snapshot.view(account, "get_config", {}) for account in accounts),
+        *(lab._account_view(snapshot, account) for account in accounts),
+        snapshot.view(config.near_nft_contract, "get_economy", {}))
+    await lab._network(snapshot)
+    await lab.verified_contracts(config, snapshot)
+    return await asyncio.gather(*(snapshot.view(account, "get_config", {}) for account in accounts))
+
 
 async def clock_status(config, rpc=None, check_lock=True):
     result = {"lab_ready": False, "lab_clock_ns": None, "lab_entropy": "historical verified drand round 6624326"}
@@ -16,12 +50,11 @@ async def clock_status(config, rpc=None, check_lock=True):
         return {"lab_ready": True}  # Original creator-only rehearsal uses the chain clock.
     if not all((config.near_nft_contract, config.near_auction_contract, config.near_market_contract)):
         return result
+    if check_lock and (config.testnet_rehearsal_dir / "operator.lock").exists():
+        return result
     rpc = rpc or NearRPC(config.near_rpc_url, budget_seconds=8)
     try:
-        await lab._network(rpc)
-        await lab.verified_contracts(config, rpc)
-        configs = await asyncio.gather(*(rpc.view(account, "get_config", {}) for account in
-            (config.near_nft_contract, config.near_auction_contract, config.near_market_contract)))
+        configs = await asyncio.wait_for(_verified_clock_configs(config, rpc), CLOCK_STATUS_TIMEOUT)
         for value in configs: validate_clock_build(config, value)
         times = {int(value["clock_ns"]) for value in configs}
         result["lab_clock_ns"] = str(max(times))
@@ -190,18 +223,26 @@ async def tick(directory, rpc=None, runner=None):
             await index_receipt(factory, receipt, contract, args.get("token_id", ""), rpc)
             return True
     with lab.operator_lock(directory):
-        # Full custody checks before creating auctions; bidder actions remain in their wallets.
+        # An economy auction is eligible only after its dedicated account is
+        # Ready. Finalize factory receipts before requesting auction custody.
         with factory() as db: arts = list(db.scalars(lab.select(lab.Artwork)))
+        await Keeper(factory, config.model_copy(update={"enable_chain_writes": True}), writer, beacon_fetch=beacon).tick()
         for row in arts:
             art = row.payload
             if art["nft"]["status"] != "minted" or art["number"] < 4: continue
             token = art["edition"]
             auction = await rpc.view(config.near_auction_contract, "get_auction", {"token_id": token})
-            if auction is None:
-                owner = await rpc.view(config.near_nft_contract, "nft_token", {"token_id": token})
-                if owner["owner_id"] != config.near_auction_contract: raise lab.RehearsalError("Auction custody differs")
-                await confirmed_call(directory, config, rpc, config.near_auction_contract, "create_auction", {"token_id": token}, str(5 * 10**22), runner)
-        await Keeper(factory, config.model_copy(update={"enable_chain_writes": True}), writer, beacon_fetch=beacon).tick()
+            if auction is None or auction["status"] in ("CheckingCustody", "CustodyFailed"):
+                candidate = await rpc.view(config.near_nft_contract, "get_auction_candidate", {"token_id": token})
+                if not candidate or candidate["owner_id"] != config.near_auction_contract or candidate["token_id"] != token:
+                    raise lab.RehearsalError("Edition account and auction custody are not ready; inspect factory state before retrying")
+                method = "create_auction" if auction is None else "retry_custody"
+                deposit = str(5 * 10**22) if auction is None else "0"
+                receipt = await confirmed_call(directory, config, rpc, config.near_auction_contract, method, {"token_id": token}, deposit, runner)
+                await index_receipt(factory, receipt, config.near_auction_contract, token, rpc)
+                auction = await rpc.view(config.near_auction_contract, "get_auction", {"token_id": token})
+                if not auction or auction["status"] != "Active" or not auction["custody_verified"]:
+                    raise lab.RehearsalError("Auction activation did not verify custody; bidding remains disabled")
         # Sync only mutable chain envelopes; art, inputs and proof hashes stay frozen.
         for row in arts:
             art = row.payload

@@ -61,5 +61,5 @@ for name in ("echo_nft.wasm","echo_auction.wasm","echo_vault.wasm","echo_market.
     path=ROOT/"contracts/target/testnet-lab/wasm32-unknown-unknown/release"/name
     if not path.is_file():raise SystemExit("Build --testnet-lab before packaging the testnet release")
     lab_files[f"artifacts/testnet-lab/{name}"]=path.read_bytes()
-lab_files["README.md"]=b"# Intent Distortions testnet lab\n\nRead docs/TESTNET_LAB.md. Separate testnet accounts, controlled clock and known historical drand entropy. These binaries must never be deployed to mainnet. No credentials, prepared private workspace or raw historical capture are included. Public testnet acceptance is pending.\n"
+lab_files["README.md"]=b"# Intent Distortions testnet lab\n\nRead docs/TESTNET_LAB.md and docs/reports/testnet-deployment-2026-11-14.md. Initial testnet deployment, genesis mint and synthetic auction setup are verified; full financial and browser wallet acceptance remain pending. Separate testnet accounts, controlled clock and known historical drand entropy. These binaries must never be deployed to mainnet. No credentials, prepared private workspace or raw historical capture are included.\n"
 package("intent-distortions-testnet-lab.zip",lab_files,"testnet_lab_source_and_wasm")

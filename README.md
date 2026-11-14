@@ -6,7 +6,9 @@ For the full wallet rehearsal on NEAR testnet (auctions, marketplace, edition
 accounts, early exits, monthly draws and holder royalties), follow the
 [testnet lab runbook](docs/TESTNET_LAB.md). Its separate contract build supports
 calendar advancement and historical draw entropy. Accounts and credentials are
-configured independently from production; real testnet acceptance is pending.
+configured independently from production. [Initial testnet deployment and mints
+are verified](docs/reports/testnet-deployment-2026-11-14.md); wallet and financial
+acceptance remain in progress.
 
 The edition economy uses dedicated keyless NEAR accounts named `monthYEAR-edition-N.<nft-account>`, with monthly numbering. November 15/22/29, 2026 go to the creator; December 6 starts 24-hour auctions. Successful sales allocate 20% to treasury and 80% to the edition account. A one-time withdrawal pays 40% of that original allocation, excludes the edition from its funded draw and rolls the remainder forward. Monthly winners use contract-verified drand proofs. See [financial rules, building and deployment](docs/ECONOMY.md). `/economy` exposes contract state; `/demo` includes a separate simulated accounting explanation. This remains a release candidate pending credentialed testnet acceptance and independent review.
 
@@ -19,7 +21,7 @@ The repository includes these application profiles and demonstrations:
 | Historical Demo section (`/demo`) | Show a completed real-data replay, its recorded layers and integrity evidence | Static allowlisted assets served by the main Next.js site; unavailable until a real replay passes and is prepared |
 | [Educational demo](demo/README.md) | Explain records → checkpoint → DNA → artwork → auction → verification using synthetic data | Static HTML/CSS/JavaScript; no API, accounts, credentials or wallet |
 
-**Release status: production candidate, pending live acceptance.** The code builds and local tests pass. A verified historical replay is available; cloud deployment and real minting, bidding and settlement remain outstanding. Mainnet readiness requires recorded testnet acceptance and independent contract/security review. See [current validation evidence](docs/VALIDATION.md) and [managed deployment guide](docs/managed-cloud.md).
+**Release status: production candidate, pending full live acceptance.** The code builds and local tests pass. Testnet contracts, genesis mint and the first synthetic auction are deployed. Wallet bidding, trading, settlement, rewards and cloud rollout remain to be accepted. Mainnet readiness requires recorded testnet acceptance and independent contract/security review. See [current validation evidence](docs/VALIDATION.md) and [managed deployment guide](docs/managed-cloud.md).
 
 ## Start the educational demo
 

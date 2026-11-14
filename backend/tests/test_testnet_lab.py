@@ -69,6 +69,95 @@ async def test_clock_sync_and_partial_resume(rehearsal):
     assert not (await testnet_lab.clock_status(config, chain))["lab_ready"]
 
 
+async def test_clock_health_deduplicates_reads_and_rechecks_each_request(rehearsal):
+    directory, _ = rehearsal
+    config = full_lab(directory)
+    class CountingChain(LabChain):
+        def __init__(self, *args): super().__init__(*args); self.reads = []
+        async def call(self, method, args):
+            self.reads.append((method, json.dumps(args, sort_keys=True)))
+            return await super().call(method, args)
+        async def view(self, account, method, args):
+            self.reads.append((account, method))
+            return await super().view(account, method, args)
+    chain = CountingChain(directory, config)
+    assert (await testnet_lab.clock_status(config, chain))["lab_ready"]
+    assert len(chain.reads) == len(set(chain.reads)) == 8
+    chain.times[config.near_market_contract] += 1
+    chain.reads.clear()
+    assert not (await testnet_lab.clock_status(config, chain))["lab_ready"]
+    assert len(chain.reads) == 8
+    (directory / "operator.lock").write_text("123")
+    chain.reads.clear()
+    assert not (await testnet_lab.clock_status(config, chain))["lab_ready"]
+    assert chain.reads == []
+
+
+async def test_clock_health_timeout_disables_actions(rehearsal, monkeypatch):
+    import asyncio
+    directory, _ = rehearsal
+    config = full_lab(directory)
+    class SlowChain(LabChain):
+        async def call(self, method, args):
+            await asyncio.sleep(1)
+            return await super().call(method, args)
+    monkeypatch.setattr(testnet_lab, "CLOCK_STATUS_TIMEOUT", .01)
+    chain = SlowChain(directory, config)
+    state = await testnet_lab.clock_status(config, chain)
+    assert not state["lab_ready"] and not chain.calls
+
+
+@pytest.mark.parametrize("prior,activates", [(None, True), ("CustodyFailed", True), (None, False)])
+async def test_keeper_prepares_wallet_before_activation_and_checks_callback(rehearsal, monkeypatch, prior, activates):
+    from app.database import Artwork, Epoch
+    from app.services.economy_keeper import EconomyKeeper
+    directory, _ = rehearsal
+    config = full_lab(directory)
+    proof = lab.ROOT / "fixtures/sample-epoch/verified-beacon.json"
+    proof.parent.mkdir(parents=True, exist_ok=True)
+    proof.write_bytes((Path(__file__).resolve().parents[2] / "fixtures/sample-epoch/verified-beacon.json").read_bytes())
+    # The keeper consumes publication envelopes, not renderer inputs.
+    factory = lab.init_db(config.database_url, create_schema=False)
+    with factory.begin() as db:
+        db.add(Epoch(id="demo-000004", number=4, mode="demo", status="rendered", start=100, end=200, payload={"records": []}))
+        db.flush()
+        db.add(Artwork(id="demo-000004", epoch_id="demo-000004", image_hash="fe"*32,
+            payload={"id":"demo-000004", "number":4, "edition":"ECHO-000004", "nft":{"status":"minted"}}))
+    class CustodyChain(LabChain):
+        def __init__(self, *args):
+            super().__init__(*args)
+            self.ready = False
+            self.auction = {"status": prior, "custody_verified": False} if prior else None
+        async def view(self, account, method, args):
+            if method == "get_auction": return self.auction
+            if method == "get_auction_candidate":
+                assert self.ready, "Factory must finish before custody is queried"
+                return {"token_id":"ECHO-000004", "owner_id":config.near_auction_contract}
+            if method == "get_edition_wallet": return {"wallet_status":"Ready" if self.ready else "Uncreated"}
+            return await super().view(account, method, args)
+    chain = CustodyChain(directory, config)
+    async def prepare(self):
+        chain.ready = True
+    async def submit(directory, config, rpc, contract, method, args, deposit="0", runner=None):
+        assert chain.ready
+        assert contract == config.near_auction_contract and args == {"token_id":"ECHO-000004"}
+        assert method == ("retry_custody" if prior else "create_auction")
+        assert deposit == ("0" if prior else str(5*10**22))
+        chain.calls.append(method)
+        chain.auction = {"status":"Active" if activates else "CustodyFailed", "custody_verified":activates}
+        return {"receipts_outcome": []}
+    monkeypatch.setattr(EconomyKeeper, "tick", prepare)
+    monkeypatch.setattr(testnet_lab, "confirmed_call", submit)
+    if not activates:
+        with pytest.raises(lab.RehearsalError, match="activation did not verify"):
+            await testnet_lab.tick(directory, chain)
+    else:
+        assert (await testnet_lab.tick(directory, chain))["status"] == "keeper_pass_finalized"
+        with factory() as db:
+            assert db.get(Artwork,"demo-000004").payload["auction"]["status"] == "Active"
+    assert len(chain.calls) == 1
+
+
 async def test_unknown_action_requires_exact_final_recovery(rehearsal):
     directory, _ = rehearsal
     config = full_lab(directory); chain = LabChain(directory, config)

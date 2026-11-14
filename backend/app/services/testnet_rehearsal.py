@@ -622,6 +622,6 @@ async def contract_time(config, rpc):
     if testnet_profile.is_lab(config):
         from .testnet_lab import clock_status
         state = await clock_status(config, rpc, check_lock=False)
-        if not state["lab_ready"]: raise RehearsalError("Synchronize all lab clocks before wallet actions")
+        if not state["lab_ready"]: raise RehearsalError("Lab clock/policy could not be verified; check RPC availability and clock synchronization")
         return int(state["lab_clock_ns"])
     return int((await rpc.block())["timestamp_nanosec"])

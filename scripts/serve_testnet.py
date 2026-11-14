@@ -51,9 +51,11 @@ def serve(directory, api_port=8002, web_port=3004):
             for _ in range(80):
                 if api.poll() is not None: raise ValueError("Testnet API stopped; inspect the local api.log")
                 try:
-                    with urllib.request.urlopen(f"http://127.0.0.1:{api_port}/api/v1/health", timeout=1) as response:
+                    # Startup is local readiness. Health includes remote contract
+                    # verification and must not be retried once per second here.
+                    with urllib.request.urlopen(f"http://127.0.0.1:{api_port}/readyz", timeout=1) as response:
                         health = json.load(response)
-                        if health["mode"] == "testnet_rehearsal" and health["network"] == "testnet": break
+                        if health["mode"] == "testnet_rehearsal" and health.get("ready") is True: break
                 except (OSError, ValueError): time.sleep(.25)
             else: raise ValueError("Testnet API did not become ready")
             web = subprocess.Popen([node, "node_modules/next/dist/bin/next", "dev", "--hostname", "127.0.0.1", "--port", str(web_port)],
