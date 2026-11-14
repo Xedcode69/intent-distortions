@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { ArrowRight, ArrowUpRight, Fingerprint, Layers3, Check, Circle, ChevronRight, Copy, Download, LoaderCircle } from "lucide-react";
 import { motion } from "motion/react";
-import { useAPI, api, short, date, type Art } from "@/lib/api";
+import { useAPI, api, short, date, type Art, type Health, financialNow } from "@/lib/api";
 import { Button } from "./ui/button";
 import { SceneSvg } from "./scene-svg";
 import { AnimatedArtwork } from "./animated-artwork";
@@ -15,7 +15,8 @@ export function Loading({error}:{error?:Error|null}) {
  return <div className="empty-state">{error?<><Circle size={30}/><h2>{empty?"The first distortion is still becoming.":"The studio is temporarily unavailable."}</h2><p>{empty?"Verified editions will appear after a weekly dataset is frozen, rendered, and published.":error.message}</p>{empty?<Link className="button primary" href="/drops">Follow the next drop <ArrowRight size={15}/></Link>:<Button onClick={()=>location.reload()}>Try again <ArrowRight size={15}/></Button>}</>:<><LoaderCircle className="spin" size={28}/><p>Opening the studio…</p></>}</div>;
 }
 export function Countdown({target}:{target:number}) {
- const [now,setNow]=useState<number>(); useEffect(()=>{setNow(Date.now());const t=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(t);},[]);
+ const {data:health}=useAPI<Health>("/health");
+ const [now,setNow]=useState<number>(); useEffect(()=>{setNow(financialNow(health));const t=setInterval(()=>setNow(financialNow(health)),1000);return()=>clearInterval(t);},[health]);
  const seconds=Math.max(0,Math.floor((target*1000-(now||target*1000))/1000));
  return <span className="countdown">{[Math.floor(seconds/86400),Math.floor(seconds%86400/3600),Math.floor(seconds%3600/60)].map((n,i)=><span key={i}>{now?String(n).padStart(2,"0"):"--"}<small>{["DAYS","HOURS","MINS"][i]}</small></span>)}</span>;
 }

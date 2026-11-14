@@ -1,4 +1,5 @@
-//! NEAR-only settlement. NFTs stay with their owners until an approved sale.
+#[path = "../../lab_clock.rs"]
+mod clock;
 use near_sdk::collections::{LookupMap, UnorderedMap};
 use near_sdk::json_types::{U128, U64};
 use near_sdk::{env, near, AccountId, Gas, NearToken, PanicOnDefault, Promise};
@@ -102,14 +103,14 @@ impl EchoMarket {
             creator,
             royalty_months: UnorderedMap::new(b"rm".to_vec()),
             royalty_shares: LookupMap::new(b"rs".to_vec()),
-            next_royalty_close: calendar::cycle(env::block_timestamp()),
+            next_royalty_close: calendar::cycle(crate::clock::now()),
             liability: 0,
         }
     }
     pub fn get_config(&self) -> near_sdk::serde_json::Value {
-        near_sdk::serde_json::json!({"version":"echo-market-1","nft_contract":self.nft_contract,
+        clock::describe(near_sdk::serde_json::json!({"version":"echo-market-1","nft_contract":self.nft_contract,
         "primary_auction":self.primary_auction,"creator":self.creator,"currency":"NEAR","fee_bps":500,"record_storage_yocto":STORAGE.to_string(),"transfer_schema":"echo-market-transfer-v1",
-        "royalty_policy":"equal-per-nft-utc-cutoff-v1","next_royalty_close":self.next_royalty_close,"liability":self.liability.to_string()})
+        "royalty_policy":"equal-per-nft-utc-cutoff-v1","next_royalty_close":self.next_royalty_close,"liability":self.liability.to_string()}))
     }
     #[payable]
     pub fn storage_deposit(&mut self) -> Balance {
@@ -213,7 +214,7 @@ impl EchoMarket {
         let l = self.listing(&token_id, nonce);
         assert!(l.sale.is_none(), "Sale pending");
         assert!(
-            env::predecessor_account_id() == l.seller || env::block_timestamp() >= l.expires_ns.0,
+            env::predecessor_account_id() == l.seller || crate::clock::now() >= l.expires_ns.0,
             "Seller only before expiry"
         );
         self.listings.remove(&token_id);
@@ -279,7 +280,7 @@ impl EchoMarket {
         near_sdk::assert_one_yocto();
         let o = self.offers.get(&id.0).expect("Unknown offer");
         assert!(
-            env::predecessor_account_id() == o.buyer || env::block_timestamp() >= o.expires_ns.0,
+            env::predecessor_account_id() == o.buyer || crate::clock::now() >= o.expires_ns.0,
             "Buyer only before expiry"
         );
         self.offers.remove(&id.0);
@@ -290,7 +291,7 @@ impl EchoMarket {
     pub fn accept_offer(&mut self, id: U64) -> Promise {
         near_sdk::assert_one_yocto();
         let o = self.offers.get(&id.0).expect("Unknown offer");
-        assert!(env::block_timestamp() < o.expires_ns.0, "Offer expired");
+        assert!(crate::clock::now() < o.expires_ns.0, "Offer expired");
         let l = self.active(&o.token_id, o.listing_nonce);
         assert_eq!(env::predecessor_account_id(), l.seller, "Seller only");
         assert_eq!(l.seller, o.seller);
@@ -389,11 +390,11 @@ impl EchoMarket {
     fn active(&self, t: &String, n: U64) -> Listing {
         let l = self.listing(t, n);
         assert!(l.sale.is_none(), "Sale pending");
-        assert!(env::block_timestamp() < l.expires_ns.0, "Listing expired");
+        assert!(crate::clock::now() < l.expires_ns.0, "Listing expired");
         l
     }
     fn expiry(&self, t: u64) {
-        let now = env::block_timestamp();
+        let now = crate::clock::now();
         assert!(
             t > now && t <= now + 30 * 86400 * 1_000_000_000,
             "Expiry must be within 30 days"
@@ -421,7 +422,7 @@ impl EchoMarket {
             id: U64(id),
             buyer: buyer.clone(),
             amount: U128(amount),
-            royalty_cycle: calendar::cycle(env::block_timestamp()),
+            royalty_cycle: calendar::cycle(crate::clock::now()),
         });
         let cycle = l.sale.as_ref().unwrap().royalty_cycle;
         let mut month = self.royalty_month(cycle);
@@ -488,3 +489,16 @@ impl EchoMarket {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(feature = "testnet-lab")]
+#[near]
+impl EchoMarket {
+    #[init]
+    pub fn new_testnet_lab(nft_contract: AccountId, primary_auction: AccountId, creator: AccountId, clock_authority: AccountId, timestamp_ns: near_sdk::json_types::U64) -> Self {
+        clock::initialize(clock_authority.clone(), timestamp_ns.0);
+        Self::new(nft_contract, primary_auction, creator)
+    }
+    pub fn lab_set_time(&mut self, timestamp_ns: near_sdk::json_types::U64) {
+        clock::advance(timestamp_ns.0);
+    }
+}

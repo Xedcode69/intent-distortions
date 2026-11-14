@@ -1,3 +1,5 @@
+#[path = "../../lab_clock.rs"]
+mod clock;
 use near_contract_standards::non_fungible_token::Token;
 use near_sdk::collections::{LookupMap, UnorderedMap};
 use near_sdk::json_types::{U128, U64};
@@ -319,7 +321,7 @@ impl EchoAuction {
         };
         a.custody_verified = valid;
         if valid {
-            a.end_ns = U64(env::block_timestamp().checked_add(self.duration).unwrap());
+            a.end_ns = U64(crate::clock::now().checked_add(self.duration).unwrap());
         }
         self.auctions.insert(&token_id, &a);
         event(
@@ -339,7 +341,7 @@ impl EchoAuction {
         let mut a = self.auctions.get(&token_id).expect("Unknown auction");
         assert_eq!(a.status, Status::Active, "Auction not active");
         assert!(a.custody_verified, "Custody unverified");
-        assert!(env::block_timestamp() < a.end_ns.0, "Auction ended");
+        assert!(crate::clock::now() < a.end_ns.0, "Auction ended");
         let amount = env::attached_deposit().as_yoctonear();
         let minimum = if a.highest_bid.0 == 0 {
             a.min_bid.0
@@ -358,8 +360,8 @@ impl EchoAuction {
         }
         a.highest_bid = U128(amount);
         a.highest_bidder = Some(who.clone());
-        if a.end_ns.0 - env::block_timestamp() <= self.extension {
-            a.end_ns = U64(env::block_timestamp().checked_add(self.extension).unwrap());
+        if a.end_ns.0 - crate::clock::now() <= self.extension {
+            a.end_ns = U64(crate::clock::now().checked_add(self.extension).unwrap());
         }
         self.auctions.insert(&token_id, &a);
         event(
@@ -379,7 +381,7 @@ impl EchoAuction {
             a.status == Status::Active || a.status == Status::RecoveryRequired,
             "Settlement not allowed"
         );
-        assert!(env::block_timestamp() >= a.end_ns.0, "Auction still open");
+        assert!(crate::clock::now() >= a.end_ns.0, "Auction still open");
         let recipient = a.highest_bidder.clone().unwrap_or_else(|| {
             self.creator
                 .clone()
@@ -445,7 +447,7 @@ impl EchoAuction {
             a.status == Status::SettlementPending || a.status == Status::RecoveryRequired,
             "Reconciliation not needed"
         );
-        assert!(env::block_timestamp() >= a.end_ns.0, "Auction still open");
+        assert!(crate::clock::now() >= a.end_ns.0, "Auction still open");
         ext_nft::ext(self.nft_contract.clone())
             .with_static_gas(Gas::from_tgas(15))
             .get_auction_delivery(token_id.clone())
@@ -515,7 +517,7 @@ impl EchoAuction {
     }
 
     pub fn get_config(&self) -> near_sdk::serde_json::Value {
-        near_sdk::serde_json::json!({"owner":self.owner,"nft_contract":self.nft_contract,"creator":self.creator,"duration_ns":self.duration.to_string(),"extension_ns":self.extension.to_string(),"min_bid":self.min_bid.to_string(),"increment":self.increment.to_string(),"treasury_accounts":self.treasury_accounts,"splits":self.splits,"version":if self.economy{"echo-auction-3"}else{"echo-auction-2"}})
+        clock::describe(near_sdk::serde_json::json!({"owner":self.owner,"nft_contract":self.nft_contract,"creator":self.creator,"duration_ns":self.duration.to_string(),"extension_ns":self.extension.to_string(),"min_bid":self.min_bid.to_string(),"increment":self.increment.to_string(),"treasury_accounts":self.treasury_accounts,"splits":self.splits,"version":if self.economy{"echo-auction-3"}else{"echo-auction-2"}}))
     }
 
     pub fn forward_proceeds(&mut self, token_id: String) -> Promise {
@@ -651,7 +653,7 @@ impl EchoAuction {
             // A settled owner can choose next style before the next Sunday 17:00 UTC.
             self.latest_settled = Some(token_id.clone());
             self.theme = None;
-            let seconds = env::block_timestamp() / SECOND;
+            let seconds = crate::clock::now() / SECOND;
             let day = seconds / 86400;
             let days_until_sunday = (10 - day % 7) % 7;
             let mut deadline = (day + days_until_sunday) * 86400 + 17 * 3600;
@@ -683,7 +685,7 @@ impl EchoAuction {
         self.earned = self.earned.checked_add(a.highest_bid.0).unwrap();
         self.latest_settled = Some(token_id.clone());
         self.theme = None;
-        let seconds = env::block_timestamp() / SECOND;
+        let seconds = crate::clock::now() / SECOND;
         let day = seconds / 86400;
         let days_until_sunday = (10 - day % 7) % 7;
         let mut deadline = (day + days_until_sunday) * 86400 + 17 * 3600;
@@ -753,7 +755,7 @@ impl EchoAuction {
             "Unsupported theme"
         );
         assert!(
-            env::block_timestamp() < self.theme_deadline,
+            crate::clock::now() < self.theme_deadline,
             "Theme deadline passed"
         );
         let token = self.latest_settled.clone().expect("No settled edition");
@@ -768,7 +770,7 @@ impl EchoAuction {
     }
     #[private]
     pub fn on_theme_owner(&mut self, token_id: String, caller: AccountId, theme: String) -> bool {
-        assert!(env::block_timestamp() < self.theme_deadline, "Theme locked");
+        assert!(crate::clock::now() < self.theme_deadline, "Theme locked");
         assert_eq!(self.latest_settled, Some(token_id));
         let owned = env::promise_result_checked(0, 32_768)
             .ok()
@@ -792,11 +794,11 @@ impl EchoAuction {
         owned
     }
     pub fn get_theme(&self) -> near_sdk::serde_json::Value {
-        near_sdk::serde_json::json!({"token_id":self.latest_settled,"theme":self.theme.clone().unwrap_or("celestial".into()),"deadline_ns":self.theme_deadline.to_string(),"locked":env::block_timestamp()>=self.theme_deadline})
+        near_sdk::serde_json::json!({"token_id":self.latest_settled,"theme":self.theme.clone().unwrap_or("celestial".into()),"deadline_ns":self.theme_deadline.to_string(),"locked":crate::clock::now()>=self.theme_deadline})
     }
     pub fn get_theme_for(&self, deadline_ns: U64) -> near_sdk::serde_json::Value {
         let record = self.theme_history.get(&deadline_ns.0);
-        near_sdk::serde_json::json!({"token_id":record.as_ref().map(|r|r.token_id.clone()),"theme":record.map(|r|r.theme).unwrap_or("celestial".into()),"deadline_ns":deadline_ns.0.to_string(),"locked":env::block_timestamp()>=deadline_ns.0})
+        near_sdk::serde_json::json!({"token_id":record.as_ref().map(|r|r.token_id.clone()),"theme":record.map(|r|r.theme).unwrap_or("celestial".into()),"deadline_ns":deadline_ns.0.to_string(),"locked":crate::clock::now()>=deadline_ns.0})
     }
 }
 
@@ -1176,5 +1178,18 @@ impl EchoAuction {
                     .with_static_gas(Gas::from_tgas(15))
                     .on_claim(who, U128(amount), treasury),
             )
+    }
+}
+
+#[cfg(feature = "testnet-lab")]
+#[near]
+impl EchoAuction {
+    #[init]
+    pub fn new_testnet_lab(owner: AccountId, nft_contract: AccountId, creator: AccountId, treasury: AccountId, min_bid: U128, increment: U128, timestamp_ns: near_sdk::json_types::U64) -> Self {
+        clock::initialize(owner.clone(), timestamp_ns.0);
+        Self::new_economy(owner.clone(), nft_contract, creator, treasury, min_bid, increment)
+    }
+    pub fn lab_set_time(&mut self, timestamp_ns: near_sdk::json_types::U64) {
+        clock::advance(timestamp_ns.0);
     }
 }

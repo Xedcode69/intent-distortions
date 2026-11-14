@@ -19,7 +19,7 @@ impl EchoNFT {
         limit: u32,
     ) -> near_sdk::serde_json::Value {
         let cutoff = calendar::cutoff(cycle);
-        assert!(env::block_timestamp() >= cutoff, "Month still open");
+        assert!(crate::clock::now() >= cutoff, "Month still open");
         let end = (offset.0 + u64::from(limit.min(25))).min(self.royalty_tokens.len());
         let mut owners = vec![];
         for index in offset.0..end {
@@ -52,7 +52,7 @@ impl EchoNFT {
 impl EchoNFT {
     pub(crate) fn record_royalty_owner(&mut self, token: &String, check_reserve: bool) {
         let owner = self.tokens.owner_by_id.get(token).unwrap();
-        let now = env::block_timestamp();
+        let now = crate::clock::now();
         let initial = env::storage_usage();
         let mut history = self.royalty_history.get(token).unwrap_or_else(|| {
             let mut prefix = b"royalty_checkpoint:".to_vec();

@@ -3,6 +3,8 @@
 .venv
 **/.venv
 .git
+.next-testnet
+frontend/.next-testnet
 .env*
 **/.env*
 **/.pytest_cache

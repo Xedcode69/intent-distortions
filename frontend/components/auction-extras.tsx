@@ -1,4 +1,5 @@
 "use client";
+import {walletTransactionsEnabled} from "@/lib/api";
 import {useState} from "react";
 import {useAPI,type Health,yocto,short} from "@/lib/api";
 import {contractAction} from "@/lib/wallet";
@@ -11,7 +12,7 @@ export function OwnerCuration(){
  const {data:h}=useAPI<Health>("/health");
  const {data:c,refetch}=useAPI<{theme:string;locked:boolean;deadline_ns:string;token_id:string|null}>("/analytics/curation");
  const [theme,setTheme]=useState("celestial"),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
- async function choose(){if(!h)return;setBusy(true);try{const result=await contractAction(h.contracts.auction,h.network,"choose_theme",{theme});setMessage(`Theme transaction confirmed: ${result.transaction.hash}`);await refetch();}catch(e){setMessage((e as Error).message);}finally{setBusy(false);}}
+ async function choose(){if(!h||!walletTransactionsEnabled(h))return;setBusy(true);try{const result=await contractAction(h.contracts.auction,h.network,"choose_theme",{theme});setMessage(`Theme transaction confirmed: ${result.transaction.hash}`);await refetch();}catch(e){setMessage((e as Error).message);}finally{setBusy(false);}}
  if(!c?.token_id)return null;
- return <div className="auction-rules"><span className="overline">OWNER CURATORIAL CHOICE</span><p>The current owner of {c.token_id} can choose one permitted style before the onchain deadline. The contract verifies ownership.</p><label className="bid-label">Theme<select value={theme} onChange={e=>setTheme(e.target.value)} disabled={c.locked}><option value="celestial">Celestial</option><option value="organic">Organic</option><option value="crystalline">Crystalline</option></select></label><Button className="subtle" onClick={choose} disabled={busy||c.locked}>{c.locked?"Choice locked":"Submit owner’s choice"}</Button>{message&&<p role="status" className="inline-message">{message}</p>}</div>;
+ return <div className="auction-rules"><span className="overline">OWNER CURATORIAL CHOICE</span><p>The current owner of {c.token_id} can choose one permitted style before the onchain deadline. The contract verifies ownership.</p><label className="bid-label">Theme<select value={theme} onChange={e=>setTheme(e.target.value)} disabled={c.locked}><option value="celestial">Celestial</option><option value="organic">Organic</option><option value="crystalline">Crystalline</option></select></label><Button className="subtle" onClick={choose} disabled={busy||c.locked||!walletTransactionsEnabled(h)}>{c.locked?"Choice locked":"Submit owner’s choice"}</Button>{message&&<p role="status" className="inline-message">{message}</p>}</div>;
 }

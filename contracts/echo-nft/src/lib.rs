@@ -1,3 +1,5 @@
+#[path = "../../lab_clock.rs"]
+mod clock;
 use near_contract_standards::non_fungible_token::approval::NonFungibleTokenApproval;
 use near_contract_standards::non_fungible_token::core::{
     NonFungibleTokenCore, NonFungibleTokenResolver,
@@ -170,7 +172,7 @@ impl EchoNFT {
         self.deliveries.get(&token_id).filter(|d| d.confirmed)
     }
     pub fn get_config(&self) -> near_sdk::serde_json::Value {
-        near_sdk::serde_json::json!({"minter":self.minter,"auction_contract":self.auction_contract,"version":if self.economy.is_some(){"echo-nft-3"}else{"echo-nft-2"},"economy":self.economy.is_some(),"trait_schema":"echo-nft-traits-v1","market_transfer_schema":"echo-market-transfer-v1","royalty_ownership_schema":"monthly-finalized-owner-v1"})
+        clock::describe(near_sdk::serde_json::json!({"minter":self.minter,"auction_contract":self.auction_contract,"version":if self.economy.is_some(){"echo-nft-3"}else{"echo-nft-2"},"economy":self.economy.is_some(),"trait_schema":"echo-nft-traits-v1","market_transfer_schema":"echo-market-transfer-v1","royalty_ownership_schema":"monthly-finalized-owner-v1"}))
     }
 
     pub fn get_market_snapshot(&self, token_id: String) -> near_sdk::serde_json::Value {
@@ -182,8 +184,8 @@ impl EchoNFT {
         let before_cutoff = edition
             .as_ref()
             .and_then(|d| d.cycle)
-            .map(|c| env::block_timestamp() < calendar::cutoff(c));
-        let bytes=near_sdk::serde_json::to_vec(&near_sdk::serde_json::json!({"owner":owner,"edition":edition,"before_cutoff":before_cutoff,"royalty_cycle":calendar::cycle(env::block_timestamp())})).unwrap();
+            .map(|c| crate::clock::now() < calendar::cutoff(c));
+        let bytes=near_sdk::serde_json::to_vec(&near_sdk::serde_json::json!({"owner":owner,"edition":edition,"before_cutoff":before_cutoff,"royalty_cycle":calendar::cycle(crate::clock::now())})).unwrap();
         near_sdk::serde_json::json!({"owner_id":owner,"rights_hash":beacon::hex(&env::sha256(&bytes))})
     }
 
@@ -635,5 +637,18 @@ mod tests {
         c.mint_weekly_artwork(account("alice.testnet"), m, p);
         let (m, p) = args(2);
         c.mint_weekly_artwork(account("alice.testnet"), m, p);
+    }
+}
+
+#[cfg(feature = "testnet-lab")]
+#[near]
+impl EchoNFT {
+    #[init]
+    pub fn new_testnet_lab(owner_id: AccountId, minter: AccountId, auction_contract: AccountId, creator: AccountId, treasury: AccountId, timestamp_ns: near_sdk::json_types::U64) -> Self {
+        clock::initialize(minter.clone(), timestamp_ns.0);
+        Self::new_economy(owner_id, minter.clone(), auction_contract, creator, treasury)
+    }
+    pub fn lab_set_time(&mut self, timestamp_ns: near_sdk::json_types::U64) {
+        clock::advance(timestamp_ns.0);
     }
 }

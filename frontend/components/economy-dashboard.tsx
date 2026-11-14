@@ -1,4 +1,5 @@
 "use client";
+import {financialNow,walletTransactionsEnabled} from "@/lib/api";
 import {useState} from "react";
 import {useAPI,yocto,toYocto,type Health} from "@/lib/api";
 import {contractAction} from "@/lib/wallet";
@@ -21,7 +22,8 @@ export function EconomyExample(){
 function WalletCard({d,enabled,busy,onAction}:{d:EditionWallet;enabled:boolean;busy:boolean;onAction:(method:string,args:Record<string,unknown>,deposit?:string)=>Promise<void>}){
  const [recipient,setRecipient]=useState("");
  const {data:detail}=useAPI<{current_owner:string|null;vault_state:{early:{status:string}|null;collection:{status:string}|null}|null}>(`/economy/wallets/${d.token_id}`);
- const now=Date.now();const cycleEnd=d.cycle?Date.UTC(Math.floor(d.cycle/100)+(d.cycle%100===12?1:0),d.cycle%100===12?0:d.cycle%100,1):0;
+ const {data:health}=useAPI<Health>("/health");
+ const now=financialNow(health);const cycleEnd=d.cycle?Date.UTC(Math.floor(d.cycle/100)+(d.cycle%100===12?1:0),d.cycle%100===12?0:d.cycle%100,1):0;
  const canExit=enabled&&d.wallet_status==="Funded"&&!!d.cycle&&!d.exited&&!d.collected&&!d.transfer_pending&&now<cycleEnd;
  const exit=(BigInt(d.original)*2n/5n).toString();
  return <article className="edition-wallet"><div className="economy-row"><h3>{d.token_id}</h3><span className="pill">{d.exited?"EXIT USED":d.collected?"POOLED":d.cycle?"FUNDED":"UNFUNDED"}</span></div>
@@ -41,7 +43,7 @@ export function EconomyDashboard(){
  const [offset,setOffset]=useState(0),[monthOffset,setMonthOffset]=useState(0),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
  const {data:wallets,refetch:refreshWallets,error:walletError}=useAPI<EditionWallet[]>(`/economy/wallets?offset=${offset}&limit=50`);
  const {data:months,refetch:refreshMonths,error:monthError}=useAPI<Month[]>(`/economy/months?offset=${monthOffset}&limit=24`);
- const enabled=h?.mode==="live"&&e?.status==="onchain"&&!!h.contracts.nft;
+ const enabled=walletTransactionsEnabled(h)&&e?.status==="onchain"&&!!h.contracts.nft;
  async function action(method:string,args:Record<string,unknown>,deposit="0"){
   if(!enabled||!h)return;setBusy(true);setMessage("");
   try{const result=await contractAction(h.contracts.nft,h.network,method,args,deposit);setMessage(`Transaction confirmed: ${result.transaction.hash}. Delivery status is verified separately.`);await Promise.all([refetch(),refreshWallets(),refreshMonths()]);}

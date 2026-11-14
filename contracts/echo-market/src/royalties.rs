@@ -76,7 +76,7 @@ impl EchoMarket {
             "Close royalty months in order"
         );
         assert!(
-            env::block_timestamp() >= calendar::cutoff(cycle),
+            crate::clock::now() >= calendar::cutoff(cycle),
             "Month still open"
         );
         let m = self.royalty_month(cycle);

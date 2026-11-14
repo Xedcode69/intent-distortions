@@ -5,7 +5,10 @@ use near_sdk::json_types::U64;
 use near_sdk::{Gas, NearToken};
 
 // Built from the source in echo-vault by scripts/build_contracts.py, never downloaded.
+#[cfg(not(feature = "testnet-lab"))]
 const VAULT_WASM: &[u8] = include_bytes!("../../artifacts/echo_vault.wasm");
+#[cfg(feature = "testnet-lab")]
+const VAULT_WASM: &[u8] = include_bytes!("../../artifacts/testnet-lab/echo_vault.wasm");
 const ZERO: NearToken = NearToken::from_yoctonear(0);
 
 #[near(serializers=[borsh,json])]
@@ -90,7 +93,7 @@ impl Month {
         Self {
             cycle,
             cutoff_ns: U64(cutoff),
-            entropy_round: U64(beacon::round_after(cutoff)),
+            entropy_round: U64(if cfg!(feature = "testnet-lab") { 6624326 } else { beacon::round_after(cutoff) }),
             status: MonthStatus::Open,
             tokens: vec![],
             entries: vec![],
@@ -203,7 +206,7 @@ impl EchoNFT {
                 && (release_ns.0 - calendar::FIRST_EDITION) % (7 * calendar::DAY) == 0,
             "Invalid weekly edition date"
         );
-        assert!(release_ns.0 <= env::block_timestamp(), "Edition not due");
+        assert!(release_ns.0 <= crate::clock::now(), "Edition not due");
         assert_eq!(
             commitment.epoch,
             (release_ns.0 - calendar::FIRST_EDITION) / (7 * calendar::DAY) + 1,
@@ -452,7 +455,7 @@ impl EchoNFT {
         assert!(amount >= 10, "Allocation too small");
         let treasury = amount / 5;
         let allocation = amount - treasury;
-        let cycle = calendar::cycle(env::block_timestamp());
+        let cycle = calendar::cycle(crate::clock::now());
         let e = self.economy.as_mut().unwrap();
         let mut m = e.month(cycle);
         assert_eq!(m.status, MonthStatus::Open, "Cycle closed");
@@ -530,7 +533,7 @@ impl EchoNFT {
         let mut d = self.edition(&token_id);
         let cycle = d.cycle.expect("Edition has no funded rights");
         assert!(
-            env::block_timestamp() < calendar::cutoff(cycle),
+            crate::clock::now() < calendar::cutoff(cycle),
             "Monthly cutoff passed"
         );
         assert!(!d.exited && !d.transfer_pending, "Withdrawal unavailable");
@@ -571,7 +574,7 @@ impl EchoNFT {
         let e = self.economy.as_mut().expect("Economy not configured");
         assert_eq!(cycle, e.next_close, "Close cycles in order");
         assert!(
-            env::block_timestamp() >= calendar::cutoff(cycle),
+            crate::clock::now() >= calendar::cutoff(cycle),
             "Month still open"
         );
         if cycle > 202612 {
@@ -709,7 +712,7 @@ impl EchoNFT {
             0
         } else {
             assert!(
-                env::block_timestamp() / calendar::SECOND
+                crate::clock::now() / calendar::SECOND
                     >= beacon::GENESIS + (m.entropy_round.0 - 1) * beacon::PERIOD,
                 "Entropy not released"
             );
@@ -888,7 +891,7 @@ impl EchoNFT {
         if let Some(e) = &mut self.economy {
             if let Some(mut d) = e.editions.get(token) {
                 if d.cycle
-                    .map(|c| env::block_timestamp() < calendar::cutoff(c))
+                    .map(|c| crate::clock::now() < calendar::cutoff(c))
                     .unwrap_or(true)
                 {
                     d.beneficiary = self.tokens.owner_by_id.get(token).unwrap();

@@ -8,6 +8,9 @@ async def validate_contracts(settings,rpc=None):
     if status["chain_id"]!=settings.near_network:raise ValueError("Contract RPC network mismatch")
     nft=await rpc.view(settings.near_nft_contract,"get_config",{})
     auction=await rpc.view(settings.near_auction_contract,"get_config",{})
+    from .testnet_profile import validate_clock_build
+    validate_clock_build(settings,nft)
+    validate_clock_build(settings,auction)
     version="3" if settings.economy_enabled else "2"
     if nft.get("version")!=f"echo-nft-{version}" or nft.get("auction_contract")!=settings.near_auction_contract:
         raise ValueError("NFT must use new_production with the configured auction")

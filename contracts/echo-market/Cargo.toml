@@ -12,3 +12,6 @@ borsh.workspace = true
 
 [dev-dependencies]
 near-sdk = { workspace = true, features = ["unit-testing"] }
+
+[features]
+testnet-lab = []

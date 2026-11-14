@@ -15,6 +15,8 @@ def account(value):
 
 async def validate_market(settings,rpc):
     config=await rpc.view(settings.near_market_contract,"get_config",{})
+    from .testnet_profile import validate_clock_build
+    validate_clock_build(settings,config)
     expected={"version":"echo-market-1","nft_contract":settings.near_nft_contract,"primary_auction":settings.near_auction_contract,
         "creator":settings.near_creator_account,"fee_bps":500,"royalty_policy":"equal-per-nft-utc-cutoff-v1","currency":"NEAR"}
     if any(config.get(k)!=v for k,v in expected.items()):raise ValueError("Marketplace contract policy mismatch")

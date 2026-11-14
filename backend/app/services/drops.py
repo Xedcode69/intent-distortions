@@ -3,6 +3,7 @@ import time
 from datetime import datetime,timezone
 from sqlalchemy import select,func
 from ..database import Artwork,Epoch,Release,Job
+from .testnet_profile import data_mode, data_modes
 
 WEEK=604800
 GENERATION_PHASES={"art_direction","rendering","preparing_files","ready"}
@@ -30,7 +31,7 @@ def drop_feed(factory,settings,*,offset=0,limit=12,now=None):
     first=int(datetime.strptime(first_date,"%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp())
     mode=settings.execution_mode
     with factory() as db:
-        numbers=list(db.scalars(select(Epoch.number).join(Artwork,Artwork.epoch_id==Epoch.id).where(Epoch.mode==mode).order_by(Epoch.number)))
+        numbers=list(db.scalars(select(Epoch.number).join(Artwork,Artwork.epoch_id==Epoch.id).where(Epoch.mode.in_(data_modes(settings))).order_by(Epoch.number)))
         number=1
         if live:
             for n in numbers:
@@ -44,7 +45,7 @@ def drop_feed(factory,settings,*,offset=0,limit=12,now=None):
         active=None;focus=r
         if live and (r and r.state!="scheduled" or now>=upcoming["beacon_at"]):
             active={**upcoming,"artwork":None}
-        latest=db.scalar(select(Artwork).join(Epoch).where(Epoch.mode==mode).order_by(Epoch.number.desc()).limit(1))
+        latest=db.scalar(select(Artwork).join(Epoch).where(Epoch.mode.in_(data_modes(settings))).order_by(Epoch.number.desc()).limit(1))
         if live and active is None and latest:
             focus=db.get(Release,latest.payload["number"])
             info=schedule(first,latest.payload["number"],settings.reconciliation_delay_seconds,focus)
@@ -64,7 +65,7 @@ def drop_feed(factory,settings,*,offset=0,limit=12,now=None):
             active.update(state=state,phase=phase,last_error_type=focus.error if focus else None,
                 progress={"pass_number":progress.attempts if progress else 0,**public,"updated_at":max([j.updated_at for j in (progress,generation,focus) if j is not None],default=None)},
                 selected_block={k:focus.payload["block"].get(k) for k in ("height","hash")} if focus and focus.payload.get("block") else None)
-        archive=select(Artwork).join(Epoch).where(Epoch.mode==mode)
+        archive=select(Artwork).join(Epoch).where(Epoch.mode.in_(data_modes(settings)))
         if active and active["artwork"]:archive=archive.where(Artwork.id!=active["artwork"]["id"])
         total=db.scalar(select(func.count()).select_from(archive.subquery()))
         rows=list(db.scalars(archive.order_by(Epoch.number.desc()).offset(offset).limit(limit)))

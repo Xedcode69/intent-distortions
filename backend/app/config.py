@@ -9,7 +9,10 @@ ROOT = Path(os.environ.get("ECHOES_ROOT",Path(__file__).resolve().parents[2]))
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=os.environ.get("ECHOES_ENV_FILE", ROOT / ".env"), extra="ignore",hide_input_in_errors=True)
     app_env: Literal["development", "production", "test"] = "development"
-    execution_mode: Literal["demo", "live", "historical_replay"] = "demo"
+    execution_mode: Literal["demo", "live", "historical_replay", "testnet_rehearsal"] = "demo"
+    testnet_rehearsal_dir: Path = Field(default=Path("data/testnet-rehearsals/unprepared"),repr=False)
+    testnet_governance_account: str = ""
+    testnet_artifact_base_url: str = ""
     database_url: str = Field(default="sqlite:///./data/echoes-demo.db",repr=False)
     data_dir: Path = ROOT / "data"
     admin_token: str = Field(default="",repr=False)
@@ -64,6 +67,9 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def production_boundary(self):
+        if self.execution_mode=="testnet_rehearsal":
+            from .services.testnet_profile import validate_boundary
+            validate_boundary(self)
         if self.app_env!="production":
             return self
         issues=[]

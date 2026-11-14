@@ -36,6 +36,7 @@ async def main():
     parser.add_argument("--bid-a",default="1 NEAR");parser.add_argument("--bid-b",default="1.1 NEAR")
     parser.add_argument("--wait-for-end",action="store_true");a=parser.parse_args()
     if settings.near_network!="testnet":raise SystemExit("This runner supports testnet only")
+    if settings.execution_mode=="testnet_rehearsal":raise SystemExit("Use scripts/testnet_rehearsal.py mint for this isolated workspace; the full bidding runner is disabled here")
     if not shutil.which("near"):raise SystemExit("Install near-cli-rs and configure your testnet OS keychain accounts first")
     if not settings.near_nft_contract or not settings.near_auction_contract:raise SystemExit("Configure both deployed testnet contracts")
     for uri in [a.media_uri,a.provenance_uri,*([a.traits_uri] if a.traits_uri else [])]:

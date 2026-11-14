@@ -8,7 +8,7 @@ from zipfile import ZipFile,ZipInfo,ZIP_DEFLATED
 
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/"dist";OUT.mkdir(exist_ok=True)
-EXCLUDED={"node_modules",".next",".next-replay","target","__pycache__",".pytest_cache",".venv",".git",".tools",".vendor","data","tests",".aws",".codex",".agents"}
+EXCLUDED={"node_modules",".next",".next-replay",".next-testnet","target","__pycache__",".pytest_cache",".venv",".git",".tools",".vendor","data","tests",".aws",".codex",".agents"}
 
 def digest(data):return hashlib.sha256(data).hexdigest()
 
@@ -32,6 +32,7 @@ files={}
 for folder in ["backend","frontend","signer","contracts","deploy","docs"]:
     for directory,dirs,names in os.walk(ROOT/folder):
         dirs[:]=sorted(d for d in dirs if d not in EXCLUDED and not d.endswith(".egg-info"))
+        if folder=="contracts":dirs[:]=[d for d in dirs if d!="artifacts"]
         for name in sorted(names):
             if name.startswith(".env") or name.endswith((".pyc",".tsbuildinfo")) or (name.endswith(".test.mjs") and folder!="contracts") or name in ("AGENTS.md","next-env.d.ts"):continue
             path=Path(directory)/name;files[path.relative_to(ROOT).as_posix()]=path.read_bytes()
@@ -43,12 +44,22 @@ for name in ["render.yaml","pyproject.toml","uv.lock",".python-version",".docker
 blueprint=yaml.safe_load(files["render.yaml"])
 blueprint["services"]=[service for service in blueprint["services"] if service["name"]!="intent-distortions-explainer"]
 files["render.yaml"]=yaml.safe_dump(blueprint,sort_keys=False).encode()
-for name in ["production_preflight.py","verify_epoch.py","export_artwork.py","validate_deployment.py","test_historical_week.py","serve_replay.py","publish_replay_demo.py","build_contracts.py","test_economy_sandbox.ps1"]:
+for name in ["production_preflight.py","verify_epoch.py","export_artwork.py","validate_deployment.py","test_historical_week.py","serve_replay.py","publish_replay_demo.py","build_contracts.py","test_economy_sandbox.ps1","testnet_rehearsal.py","serve_testnet.py"]:
     files[f"scripts/{name}"]=(ROOT/"scripts"/name).read_bytes()
-files["fixtures/sample-epoch/verified-beacon.json"]=(ROOT/"fixtures/sample-epoch/verified-beacon.json").read_bytes()
+for name in ("verified-beacon.json", "transactions.json", "evidence.json"):
+    files[f"fixtures/sample-epoch/{name}"]=(ROOT/f"fixtures/sample-epoch/{name}").read_bytes()
 for name in ["echo_nft.wasm","echo_auction.wasm","echo_vault.wasm","echo_market.wasm"]:
     path=ROOT/"contracts/target/wasm32-unknown-unknown/release"/name
     if not path.exists():raise SystemExit("Build both current contract WASM artifacts before packaging")
     files[f"artifacts/{name}"]=path.read_bytes()
 files["README.md"]=b"# Intent Distortions managed-cloud release candidate\n\nRead docs/managed-cloud.md and docs/VALIDATION.md before deployment. Source, lockfiles, contract WASM candidates, environment template and deployment definitions are included. No credentials or runtime data are packaged. The educational demo is distributed separately; this archive's Render Blueprint contains only production services. This archive has not passed live credentialed acceptance or independent security review and is not mainnet-ready.\n"
 package("intent-distortions-managed-cloud.zip",files,"managed_cloud_source_and_wasm")
+
+# Never mix the clock-controlled binaries into the production artifact set.
+lab_files={name:data for name,data in files.items() if not name.startswith("artifacts/")}
+for name in ("echo_nft.wasm","echo_auction.wasm","echo_vault.wasm","echo_market.wasm"):
+    path=ROOT/"contracts/target/testnet-lab/wasm32-unknown-unknown/release"/name
+    if not path.is_file():raise SystemExit("Build --testnet-lab before packaging the testnet release")
+    lab_files[f"artifacts/testnet-lab/{name}"]=path.read_bytes()
+lab_files["README.md"]=b"# Intent Distortions testnet lab\n\nRead docs/TESTNET_LAB.md. Separate testnet accounts, controlled clock and known historical drand entropy. These binaries must never be deployed to mainnet. No credentials, prepared private workspace or raw historical capture are included. Public testnet acceptance is pending.\n"
+package("intent-distortions-testnet-lab.zip",lab_files,"testnet_lab_source_and_wasm")

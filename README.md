@@ -2,17 +2,24 @@
 
 Weekly generative art derived from a committed NEAR Intents dataset, a scheduled drand beacon, a verified historical NEAR block, and the previous artwork hash.
 
+For the full wallet rehearsal on NEAR testnet (auctions, marketplace, edition
+accounts, early exits, monthly draws and holder royalties), follow the
+[testnet lab runbook](docs/TESTNET_LAB.md). Its separate contract build supports
+calendar advancement and historical draw entropy. Accounts and credentials are
+configured independently from production; real testnet acceptance is pending.
+
 The edition economy uses dedicated keyless NEAR accounts named `monthYEAR-edition-N.<nft-account>`, with monthly numbering. November 15/22/29, 2026 go to the creator; December 6 starts 24-hour auctions. Successful sales allocate 20% to treasury and 80% to the edition account. A one-time withdrawal pays 40% of that original allocation, excludes the edition from its funded draw and rolls the remainder forward. Monthly winners use contract-verified drand proofs. See [financial rules, building and deployment](docs/ECONOMY.md). `/economy` exposes contract state; `/demo` includes a separate simulated accounting explanation. This remains a release candidate pending credentialed testnet acceptance and independent review.
 
-The repository now contains **two separate applications**:
+The repository includes these application profiles and demonstrations:
 
 | Application | Purpose | Runtime |
 |---|---|---|
 | Production application | Authenticated ingestion, fixed freeze orchestration, recorded NEAR AI direction, deterministic art, NFT publication, auctions and recovery | Next.js + private FastAPI + one background worker + managed PostgreSQL + S3/CloudFront |
+| Testnet lab | Same financial pages, saved genesis, synthetic auction editions and controlled monthly rehearsal | Isolated Next.js + FastAPI, testnet contracts and explicit CLI operator actions |
 | Historical Demo section (`/demo`) | Show a completed real-data replay, its recorded layers and integrity evidence | Static allowlisted assets served by the main Next.js site; unavailable until a real replay passes and is prepared |
 | [Educational demo](demo/README.md) | Explain records → checkpoint → DNA → artwork → auction → verification using synthetic data | Static HTML/CSS/JavaScript; no API, accounts, credentials or wallet |
 
-**Release status: production candidate, pending live acceptance.** The code builds and local tests pass. No cloud resources or contracts have been deployed. No real Explorer swap capture, paid AI generation, real mint, bids or settlement have been executed. Mainnet readiness requires recorded testnet acceptance and independent contract/security review. See [current validation evidence](docs/VALIDATION.md) and [managed deployment guide](docs/managed-cloud.md).
+**Release status: production candidate, pending live acceptance.** The code builds and local tests pass. A verified historical replay is available; cloud deployment and real minting, bidding and settlement remain outstanding. Mainnet readiness requires recorded testnet acceptance and independent contract/security review. See [current validation evidence](docs/VALIDATION.md) and [managed deployment guide](docs/managed-cloud.md).
 
 ## Start the educational demo
 
@@ -51,7 +58,12 @@ Follow [docs/managed-cloud.md](docs/managed-cloud.md) for environment variables,
 
 Credentials are needed for Explorer, NEAR AI, durable storage and signed publication. The frontend receives only the private API address; the static demo receives none. Chain writes are disabled by default. No credentials have been configured in this workspace.
 
-After building WASM, `uv run --locked python scripts/build_release.py` creates `dist/intent-distortions-managed-cloud.zip` and `dist/intent-distortions-demo.zip` with per-file hash manifests. The managed source bundle has a production-only Blueprint; the demo is packaged independently. These are candidate deliverables, not evidence of a deployed or audited service.
+Build production WASM and the separate `--testnet-lab` build first. Then
+`uv run --locked python scripts/build_release.py` creates three archives with
+per-file hash manifests: `intent-distortions-managed-cloud.zip`,
+`intent-distortions-testnet-lab.zip` and `intent-distortions-demo.zip` in `dist/`.
+The production archive contains production binaries only. These are candidate
+deliverables, not evidence of a deployed or audited service.
 
 ## Verification
 

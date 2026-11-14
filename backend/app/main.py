@@ -14,6 +14,7 @@ from .database import init_db, Artwork, Epoch, Job, Release, Swap, ChainEvent
 from .services.epoch_manager import run_demo, sunday_schedule
 from .services.storage import ContentStore,content_store
 from .services.provenance import verify_artwork
+from .services.testnet_profile import data_mode, data_modes
 from .services.merkle import verify as verify_merkle
 from .services.randomness import verify_beacon, select_timestamp, round_for
 
@@ -70,13 +71,13 @@ async def invalid(request,exc):
 def art(id):
     with factory() as db:
         row=db.get(Artwork,id)
-        if row is None or row.payload["mode"]!=settings.execution_mode:
+        if row is None or row.payload["mode"] not in data_modes(settings):
             raise HTTPException(404,"Artwork not found")
         return row.payload
 
 def all_art(limit=100,offset=0):
     with factory() as db:
-        return [r.payload for r in db.scalars(select(Artwork).join(Epoch).where(Epoch.mode==settings.execution_mode).order_by(Epoch.number.desc()).limit(limit).offset(offset))]
+        return [r.payload for r in db.scalars(select(Artwork).join(Epoch).where(Epoch.mode.in_(data_modes(settings))).order_by(Epoch.number.desc()).limit(limit).offset(offset))]
 
 def admin(request: Request):
     if not settings.admin_token or not hmac.compare_digest(request.headers.get("Authorization",""),f"Bearer {settings.admin_token}"):
@@ -91,10 +92,14 @@ def local_demo(request: Request):
         raise HTTPException(403,"Origin not allowed")
 
 @app.get("/api/v1/health")
-def health():
-    return {"status":"ok","mode":settings.execution_mode,"network":settings.near_network,
-            "integrations":{"explorer":"recorded_capture" if settings.execution_mode=="historical_replay" else "worker_managed" if settings.app_env=="production" else "configured" if settings.near_intents_partner_jwt else "credentials_required",
-            "near_ai":"recorded_direction" if settings.execution_mode=="historical_replay" else "worker_managed" if settings.app_env=="production" else "configured" if settings.near_ai_api_key else "deterministic_fallback",
+async def health():
+    extra={}
+    if settings.execution_mode=="testnet_rehearsal":
+        from .services.testnet_lab import clock_status
+        extra=await clock_status(settings)
+    return {**extra,"status":"ok","mode":settings.execution_mode,"network":settings.near_network,
+            "integrations":{"explorer":"recorded_capture" if settings.execution_mode in ("historical_replay","testnet_rehearsal") else "worker_managed" if settings.app_env=="production" else "configured" if settings.near_intents_partner_jwt else "credentials_required",
+            "near_ai":"recorded_direction" if settings.execution_mode in ("historical_replay","testnet_rehearsal") else "worker_managed" if settings.app_env=="production" else "configured" if settings.near_ai_api_key else "deterministic_fallback",
             "nft":"configured" if settings.near_nft_contract else "not_deployed", "auction":"configured" if settings.near_auction_contract else "not_deployed"},
             "contracts":{"nft":settings.near_nft_contract,"auction":settings.near_auction_contract}}
 
@@ -158,10 +163,12 @@ async def artwork_traits(id:str):
 def epochs(limit:int=50,offset:int=0):
     if not 1<=limit<=100 or offset<0:raise HTTPException(422,"Invalid page bounds")
     with factory() as db:
-        return [{"id":r.id,"number":r.number,"mode":r.mode,"status":r.status,"start":r.start,"end":r.end,"transaction_count":len(r.payload["records"])} for r in db.scalars(select(Epoch).where(Epoch.mode==settings.execution_mode).order_by(Epoch.number.desc()).limit(limit).offset(offset))]
+        return [{"id":r.id,"number":r.number,"mode":r.mode,"status":r.status,"start":r.start,"end":r.end,"transaction_count":len(r.payload["records"])} for r in db.scalars(select(Epoch).where(Epoch.mode.in_(data_modes(settings))).order_by(Epoch.number.desc()).limit(limit).offset(offset))]
 
 @app.get("/api/v1/epochs/current")
 def current():
+    if settings.execution_mode=="testnet_rehearsal":
+        return {"mode":"testnet_rehearsal","status":"saved_artwork","collection":"recorded_historical_data","selected_block":latest()["block"],"schedule_timezone":"UTC"}
     if settings.execution_mode=="historical_replay":
         with factory() as db:summary=db.get(Job,"historical-replay-summary")
         if summary:return summary.payload
@@ -184,10 +191,15 @@ def current():
     return {"mode":settings.execution_mode,"status":"demo_fixture" if settings.execution_mode=="demo" else "awaiting_checkpoint", "next_selection":sunday_schedule(),"selected_block":None,"collection":"not_live" if settings.execution_mode=="demo" else "see_ingestion_health", "schedule_timezone":"UTC"}
 
 @app.get("/api/v1/drops")
-def drops(offset:int=0,limit:int=12):
+async def drops(offset:int=0,limit:int=12):
     if not 0<=offset<=100000 or not 1<=limit<=50:raise HTTPException(422,"Invalid drop pagination")
     from .services.drops import drop_feed
-    return drop_feed(factory,settings,offset=offset,limit=limit)
+    now=None
+    if settings.execution_mode=="testnet_rehearsal":
+        from .services.testnet_lab import clock_status
+        state=await clock_status(settings)
+        if state.get("lab_clock_ns"): now=int(state["lab_clock_ns"])//10**9
+    return drop_feed(factory,settings,offset=offset,limit=limit,now=now)
 
 
 @app.get("/api/v1/replay/progress")
@@ -204,7 +216,7 @@ def replay_progress():
 def epoch(id:str):
     with factory() as db:
         row=db.get(Epoch,id)
-        if not row or row.mode!=settings.execution_mode: raise HTTPException(404)
+        if not row or row.mode not in data_modes(settings): raise HTTPException(404)
         return {"id":row.id,"status":row.status,"start":row.start,"end":row.end,"transaction_count":len(row.payload["records"]),**{k:v for k,v in row.payload.items() if k!="records"}}
 
 @app.get("/api/v1/epochs/{id}/statistics")
@@ -231,7 +243,7 @@ def content(digest:str):
 def summary():
     editions=swaps=minted=0
     with factory() as db:
-        for row in db.scalars(select(Artwork).join(Epoch).where(Epoch.mode==settings.execution_mode).execution_options(yield_per=100)):
+        for row in db.scalars(select(Artwork).join(Epoch).where(Epoch.mode.in_(data_modes(settings))).execution_options(yield_per=100)):
             editions+=1;swaps+=row.payload["stats"]["total_swaps"];minted+=row.payload["nft"]["status"]=="minted"
     return {"editions":editions,"swaps":swaps,"minted":minted,"mode":settings.execution_mode}
 
