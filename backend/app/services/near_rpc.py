@@ -24,14 +24,21 @@ class NearRPC:
             client=self.client or owned
             for attempt in range(6):
                 response = await client.post(self.url, json={"jsonrpc": "2.0", "id": "echoes", "method": method, "params": params})
-                if response.status_code==429 or response.status_code>=500:
+                payload=response.json() if response.status_code<400 else None
+                # Some providers return JSON-RPC -429 with HTTP 200. Back off
+                # read calls as well as HTTP limits; never expose provider bodies.
+                rpc_limited=isinstance(payload,dict) and isinstance(payload.get("error"),dict) and payload["error"].get("code") in (-429,429)
+                retry_read=rpc_limited and method in ("query","status","block","tx","EXPERIMENTAL_tx_status")
+                if response.status_code==429 or response.status_code>=500 or retry_read:
                     if attempt==5: break
-                    await asyncio.sleep(max(float(response.headers.get("Retry-After",0)),2**attempt))
+                    try:retry_after=min(30,max(0,float(response.headers.get("Retry-After",0))))
+                    except ValueError:retry_after=0
+                    await asyncio.sleep(max(retry_after,2**attempt))
                     continue
                 break
             if response.status_code>=400:
                 raise RuntimeError(f"NEAR RPC HTTP {response.status_code}; use a healthy archival provider")
-            payload = response.json()
+            if rpc_limited:raise RuntimeError("NEAR RPC rate limit reached; wait before retrying or configure a provider with sufficient capacity")
             if "error" in payload:
                 error=payload["error"]
                 name=error.get("cause",{}).get("name",error.get("name","query_error"))

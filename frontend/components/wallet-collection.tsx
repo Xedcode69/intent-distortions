@@ -19,7 +19,7 @@ function OwnedArtworks({account,network}:{account:string;network:string}){
   const {data,error,isFetching,refetch}=useQuery<Collection>({
     queryKey:["wallet-collection",network,account,offset],
     queryFn:()=>api(`/wallets/${encodeURIComponent(account)}/collection?offset=${offset}&limit=${limit}`),
-    staleTime:0,refetchInterval:15000,
+    staleTime:0,refetchInterval:30000,
   });
   if(error)return <div className="empty-state" role="alert"><h2>Collection unavailable.</h2><p>Your current ownership could not be verified.</p><button className="button subtle" onClick={()=>void refetch()}>Try again</button></div>;
   if(!data)return <div className="empty-state" role="status"><p>Checking your collection…</p></div>;
@@ -30,7 +30,7 @@ function OwnedArtworks({account,network}:{account:string;network:string}){
     <div className="id-art-grid id-owned-grid">{data.tokens.map(token=><button key={token.token_id} className="id-art-card" onClick={()=>setSelected(token.token_id)}><div className="id-art-image">{token.metadata?.media?<img src={token.metadata.media} alt={token.metadata.title||token.token_id} loading="lazy"/>:<span>INTENT DISTORTIONS</span>}<span className="id-art-badge">Owned by you</span></div><div className="id-art-caption"><span>{token.token_id}</span><h2>{token.metadata?.title||token.token_id}</h2><div><strong>Details & edition wallet</strong><ArrowUpRight size={17}/></div></div></button>)}</div>
     {!data.tokens.length&&<div className="empty-state"><h2>{offset?"No artworks on this page.":"Your next distortion awaits."}</h2><p>{offset?"Ownership may have changed. Return to the first page or refresh.":"This wallet holds no NFTs from the configured Intent Distortions collection."}</p><Link href="/marketplace" className="button primary">Explore the market <ArrowUpRight size={15}/></Link></div>}
     {(offset>0||BigInt(data.total||"0")>BigInt(limit))&&<div className="owned-pagination"><button className="button subtle" disabled={offset===0||isFetching} onClick={()=>setOffset(Math.max(0,offset-limit))}>Previous</button><button className="button subtle" disabled={BigInt(offset+limit)>=BigInt(data.total||"0")||isFetching} onClick={()=>setOffset(offset+limit)}>Next</button></div>}
-    <p className="demo-note id-collection-footnote">{data.network} · {data.contract} · Checked {new Date((data.checked_at||0)*1000).toLocaleTimeString()}. Ownership refreshes every 15 seconds.</p>
+    <p className="demo-note id-collection-footnote">{data.network} · {data.contract} · Checked {new Date((data.checked_at||0)*1000).toLocaleTimeString()}. Ownership refreshes every 30 seconds.</p>
     {selected&&<ArtworkDetail key={selected} tokenId={selected} onClose={()=>setSelected("")}/>}
     </>;
 }

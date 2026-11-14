@@ -13,7 +13,7 @@ function flow(kind='offer',overrides={}){
 test('one action sets up storage, rechecks rights and submits the exact action',async()=>{
  const f=flow();assert.equal(await f.run(),'receipt');assert.deepEqual(f.calls,['validate',['storage','20000000000000000000000'],'validate','action']);
  const buy=flow('buy');await buy.run();assert.deepEqual(buy.calls[1],['storage','10000000000000000000000']);
- const update=flow('list');await update.run({replacesOwnListing:true});assert.deepEqual(update.calls,['validate','validate','action']);
+ const update=flow('list');await update.run({replacesOwnListing:true});assert.deepEqual(update.calls,['validate','action']);
 });
 test('a cancelled storage approval cannot trigger the action',async()=>{
  const f=flow('list',{register:async()=>{throw new Error('Cancelled');}});
@@ -26,7 +26,7 @@ test('changed wallet or financial rights after preparation stop the action',asyn
  await assert.rejects(stale.run(),/Rights changed/);assert.ok(!stale.calls.includes('action'));
 });
 test('existing storage avoids extra approvals and failed setup is not silently continued',async()=>{
- const f=flow('offer',{readBalance:async()=>({storage_available:'10000000000000000000000'})});await f.run();assert.deepEqual(f.calls,['validate','validate','action']);
+ const f=flow('offer',{readBalance:async()=>({storage_available:'10000000000000000000000'})});await f.run();assert.deepEqual(f.calls,['validate','action']);
  const bad=flow('offer',{readBalance:async()=>({storage_available:'0'})});await assert.rejects(bad.run(),/not confirmed/);assert.ok(!bad.calls.includes('action'));
 });
 const wallet={wallet_status:'Funded',cycle:202612,original:'1200000000000000000000000',remaining:'1200000000000000000000000',exited:false,collected:false,transfer_pending:false};

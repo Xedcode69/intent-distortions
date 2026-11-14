@@ -17,10 +17,10 @@ export function Marketplace({initialToken=""}:{initialToken?:string}){
  const [selected,setSelected]=useState(initialToken),[search,setSearch]=useState(""),[status,setStatus]=useState("all"),[family,setFamily]=useState(""),[sort,setSort]=useState("newest"),[mine,setMine]=useState(false),[offset,setOffset]=useState(0),[filters,setFilters]=useState(false),[tab,setTab]=useState("items"),[scope,setScope]=useState("all"),[offerOffset,setOfferOffset]=useState(0),[royaltyOffset,setRoyaltyOffset]=useState(0),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
  useEffect(()=>setSelected(initialToken),[initialToken]);
  const params=new URLSearchParams({offset:String(offset),limit:"24",search,status,family,sort,...(mine&&account?{owner:account}:{})});
- const {data:collection,error,isFetching}=useQuery({queryKey:["collection-market",health?.network,params.toString()],queryFn:()=>api<CollectionMarket>(`/marketplace/collection?${params}`),enabled:!!config,refetchInterval:15000});
+ const {data:collection,error,isFetching}=useQuery({queryKey:["collection-market",health?.network,params.toString()],queryFn:()=>api<CollectionMarket>(`/marketplace/collection?${params}`),enabled:!!config,refetchInterval:30000});
  const offerParams=new URLSearchParams({offset:String(offerOffset),limit:"20",scope,...(account?{account_id:account}:{})});
- const {data:offers,error:offerError}=useQuery({queryKey:["collection-offers",health?.network,offerParams.toString()],queryFn:()=>api<MarketOffer[]>(`/marketplace/offers?${offerParams}`),enabled:tab==="offers"&&config?.status==="onchain"&&(scope==="all"||!!account),refetchInterval:15000});
- const {data:balance}=useQuery({queryKey:["market-balance",health?.network,account],queryFn:()=>api<MarketBalance>(`/marketplace/balances/${encodeURIComponent(account)}`),enabled:!!account&&config?.status==="onchain",refetchInterval:15000});
+ const {data:offers,error:offerError}=useQuery({queryKey:["collection-offers",health?.network,offerParams.toString()],queryFn:()=>api<MarketOffer[]>(`/marketplace/offers?${offerParams}`),enabled:tab==="offers"&&config?.status==="onchain"&&(scope==="all"||!!account),refetchInterval:30000});
+ const {data:balance}=useQuery({queryKey:["market-balance",health?.network,account],queryFn:()=>api<MarketBalance>(`/marketplace/balances/${encodeURIComponent(account)}`),enabled:!!account&&config?.status==="onchain",refetchInterval:30000});
  const {data:months}=useAPI<RoyaltyMonth[]>(`/marketplace/royalties?offset=${royaltyOffset}&limit=24`);
  const enabled=walletTransactionsEnabled(health)&&config?.status==="onchain"&&wallet.network===health?.network;
  useEffect(()=>{if(!account){setMine(false);setScope("all");}},[account]);

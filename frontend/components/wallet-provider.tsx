@@ -1,6 +1,7 @@
 "use client";
 import {createContext,useContext,useEffect,useState,useCallback} from "react";
 import {useAPI,type Health} from "@/lib/api";
+import {walletApprovalPending} from "@/lib/wallet-activity";
 import {walletSession} from "@/lib/wallet";
 import type {WalletNetwork} from "@/lib/wallet-session";
 
@@ -34,7 +35,7 @@ export function WalletProvider({children}:{children:React.ReactNode}){
       if(disposed)return;
       update(selector);setReady(true);setError("");
       subscription=selector.store.observable.subscribe(()=>update(selector));
-      refresh=()=>{void selector.refresh();};
+      refresh=()=>{if(!walletApprovalPending())void selector.refresh();};
       timer=setInterval(refresh,15000);window.addEventListener("focus",refresh);
     }).catch(()=>{if(!disposed)setError("Wallet session could not be restored. Try connecting again.");});
     return()=>{disposed=true;subscription?.unsubscribe();if(timer)clearInterval(timer);if(refresh)window.removeEventListener("focus",refresh);};

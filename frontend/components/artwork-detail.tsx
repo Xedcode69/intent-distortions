@@ -4,6 +4,7 @@ import {useQuery,useQueryClient} from "@tanstack/react-query";
 import {X,ArrowUpRight} from "lucide-react";
 import {api,financialNow,toYocto,useAPI,walletTransactionsEnabled,type Health} from "@/lib/api";
 import {contractAction,walletAccount} from "@/lib/wallet";
+import {duringWalletApproval} from "@/lib/wallet-activity";
 import {activeListing,tokenTraits,units,type MarketConfig,type MarketDetail,type MarketOffer,type MarketBalance} from "@/lib/marketplace";
 import {submitPreparedMarketAction} from "@/lib/market-action";
 import {withdrawalState,monthLabel,type EditionWallet} from "@/lib/economy";
@@ -17,21 +18,21 @@ export function ArtworkDetail({tokenId,onClose}:{tokenId:string;onClose:()=>void
  const {data:health}=useAPI<Health>("/health"),{data:config}=useAPI<MarketConfig>("/marketplace");
  const [price,setPrice]=useState(""),[offer,setOffer]=useState(""),[recipient,setRecipient]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false),[confirmExit,setConfirmExit]=useState(false),[offerOffset,setOfferOffset]=useState(0);
  const readDetail=()=>api<MarketDetail>(`/marketplace/tokens/${encodeURIComponent(tokenId)}`);
- const {data:d,error,refetch}=useQuery({queryKey:["artwork-detail",health?.network,tokenId],queryFn:readDetail,enabled:config?.status==="onchain",refetchInterval:15000});
- const {data:offers,refetch:refreshOffers}=useQuery({queryKey:["item-offers",health?.network,tokenId,offerOffset],queryFn:()=>api<MarketOffer[]>(`/marketplace/offers?token_id=${encodeURIComponent(tokenId)}&offset=${offerOffset}&limit=20`),enabled:config?.status==="onchain",refetchInterval:15000});
- const {data:vault}=useQuery({queryKey:["item-vault",health?.network,tokenId],queryFn:()=>api<EditionWallet&{current_owner:string;vault_state:{early:{status:string}|null}|null}>(`/economy/wallets/${encodeURIComponent(tokenId)}`),enabled:!!d,refetchInterval:15000});
+ const {data:d,error}=useQuery({queryKey:["artwork-detail",health?.network,tokenId],queryFn:readDetail,enabled:config?.status==="onchain",refetchInterval:30000});
+ const {data:offers}=useQuery({queryKey:["item-offers",health?.network,tokenId,offerOffset],queryFn:()=>api<MarketOffer[]>(`/marketplace/offers?token_id=${encodeURIComponent(tokenId)}&offset=${offerOffset}&limit=20`),enabled:config?.status==="onchain",refetchInterval:30000});
+ const {data:vault}=useQuery({queryKey:["item-vault",health?.network,tokenId],queryFn:()=>api<EditionWallet&{current_owner:string;vault_state:{early:{status:string}|null}|null}>(`/economy/wallets/${encodeURIComponent(tokenId)}`),enabled:!!d,refetchInterval:30000});
  useEffect(()=>{const node=dialog.current;node?.showModal();const previous=document.body.style.overflow;document.body.style.overflow="hidden";return()=>{node?.close();document.body.style.overflow=previous;};},[]);
  useEffect(()=>{setConfirmExit(false);},[account,tokenId,d?.snapshot.rights_hash]);
  const enabled=walletTransactionsEnabled(health)&&config?.status==="onchain"&&wallet.network===health?.network;
  const owner=!!account&&account===d?.nft.owner_id;
  const active=!!d&&!!config&&activeListing(d,config.contract,financialNow(health));
  const exit=d?withdrawalState(d.wallet,d.nft.owner_id,account,financialNow(health)):null;
- async function refresh(){await Promise.all([cache.invalidateQueries(),refetch(),refreshOffers()]);}
+ async function refresh(){await cache.invalidateQueries();}
  async function submit(method:string,args:Record<string,unknown>,deposit="1",contract=config?.contract){
   if(!enabled||!health||!contract||!account)throw new Error("Connect your wallet on this site's network first.");
   return contractAction(contract,health.network,method,args,deposit,account);
  }
- async function run(task:()=>Promise<unknown>){if(busy)return;setBusy(true);setMessage("");try{await task();setMessage("Transaction submitted. Refreshing ownership and payment status…");await refresh();}catch(e){setMessage((e as Error).message);await refresh();}finally{setBusy(false);}}
+ async function run(task:()=>Promise<unknown>){if(busy)return;setBusy(true);setMessage("");try{await duringWalletApproval(task);setMessage("Transaction submitted. Refreshing ownership and payment status…");await refresh();}catch(e){setMessage((e as Error).message);if(!/rate limit/i.test((e as Error).message))await refresh();}finally{setBusy(false);}}
  async function validate(kind:"buy"|"offer"|"list"){
   const fresh=await readDetail();const h=await api<Health>("/health");
   if(!health||!walletTransactionsEnabled(h)||h.network!==health.network||h.contracts.nft!==health.contracts.nft||h.contracts.auction!==health.contracts.auction)throw new Error("The site network or contracts changed. Reload before trading.");
@@ -39,19 +40,21 @@ export function ArtworkDetail({tokenId,onClose}:{tokenId:string;onClose:()=>void
   if(kind==="list"){
    if(fresh.nft.owner_id!==account||fresh.listing?.sale)throw new Error("Only the current owner can list an available artwork.");
   }else if(!activeListing(fresh,config.contract,financialNow(h))||fresh.listing?.nonce!==d.listing?.nonce||fresh.listing?.price!==d.listing?.price||fresh.nft.owner_id===account)throw new Error("The listing changed. Review its current price and availability.");
+  return h;
  }
  async function trade(kind:"buy"|"offer"|"list"){
   if(!d||!config||!health)return;
   // Validate monetary input before asking for any storage approval.
   const amount=kind==="offer"?toYocto(offer):kind==="list"&&price?toYocto(price):null;
   if(amount!==null&&BigInt(amount)<=0n)throw new Error("Enter a positive NEAR amount.");
+  let reviewedHealth=health;
   await submitPreparedMarketAction({account,kind,replacesOwnListing:kind==="list"&&d.listing?.seller===account},{
-   currentAccount:()=>walletAccount(config.contract,health.network),validate:()=>validate(kind),
+   currentAccount:()=>walletAccount(config.contract,health.network),validate:async()=>{reviewedHealth=await validate(kind);},
    readBalance:()=>api<MarketBalance>(`/marketplace/balances/${encodeURIComponent(account)}`),
    register:deposit=>submit("storage_deposit",{},deposit),
    progress:phase=>setMessage(phase==="storage"?"Approve storage setup, then the artwork action in your wallet.":"Review the artwork action in your wallet."),
    submit:async()=>{
-    const h=await api<Health>("/health");
+    const h=reviewedHealth;
     if(kind==="list"){
      const expires_ns=String(BigInt(financialNow(h)+7*86400000)*1000000n);
      await submit("nft_approve",{token_id:tokenId,account_id:config.contract,msg:JSON.stringify({price:amount,expires_ns})},toYocto("0.01"),health.contracts.nft);
