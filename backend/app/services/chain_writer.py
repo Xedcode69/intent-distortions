@@ -19,7 +19,6 @@ class Signer:
         node=shutil.which("node")
         if not node:raise RuntimeError("Node.js runtime is required by the isolated NEAR signer")
         env={**os.environ,"ENABLE_CHAIN_WRITES":str(self.settings.enable_chain_writes).lower(),
-             "MAINNET_WRITES_APPROVED":str(self.settings.mainnet_writes_approved).lower(),
              "NEAR_NETWORK":self.settings.near_network,"NEAR_NFT_CONTRACT":self.settings.near_nft_contract,
              "NEAR_AUCTION_CONTRACT":self.settings.near_auction_contract,"NEAR_MARKET_CONTRACT":self.settings.near_market_contract}
         process=await asyncio.create_subprocess_exec(node,str(ROOT/"signer/sign.mjs"),stdin=asyncio.subprocess.PIPE,
@@ -37,7 +36,7 @@ class ChainWriter:
 
     async def submit(self,key,contract,method,args,deposit="0"):
         if not self.settings.enable_chain_writes:raise RuntimeError("Chain writes disabled; publication awaits operator configuration")
-        if self.settings.near_network=="mainnet" and not self.settings.mainnet_writes_approved:raise RuntimeError("Mainnet writes not approved")
+        if self.settings.near_network!="testnet":raise RuntimeError("This prototype signs testnet transactions only")
         digest=sha(canonical({"contract":contract,"method":method,"args":args,"deposit":deposit})).hex()
         with self.factory() as db:effect=db.get(Effect,key)
         if effect:

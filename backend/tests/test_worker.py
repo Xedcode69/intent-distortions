@@ -20,7 +20,7 @@ async def test_worker_observes_before_freeze_reuses_inputs_and_waits_for_signer(
     monkeypatch.setattr(asset_networks,"fetch_asset_mapping",registry)
     beacon=json.loads((Path(__file__).resolve().parents[2]/"fixtures/sample-epoch/verified-beacon.json").read_text())
     sunday=beacon["released_at"]-18*3600;now=[beacon["released_at"]+30]
-    settings=Settings(_env_file=None,app_env="test",execution_mode="live",data_dir=tmp_path,near_intents_partner_jwt="unit-test",first_release_sunday="2026-11-08",near_ai_api_key="",near_nft_contract="",near_auction_contract="")
+    settings=Settings(_env_file=None,app_env="test",execution_mode="live",data_dir=tmp_path,near_intents_partner_jwt="unit-test",first_release_sunday="2026-11-08",genesis_checkpoint=1793491200,genesis_checkpoint_ns="1793491200000000000",near_ai_api_key="",near_nft_contract="",near_auction_contract="")
     engine=create_engine(f"sqlite:///{tmp_path/'worker.db'}");Base.metadata.create_all(engine);factory=sessionmaker(engine,expire_on_commit=False)
     class RPC:
         def __init__(self):self.lookups=0

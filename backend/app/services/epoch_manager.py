@@ -88,13 +88,14 @@ async def run_epoch(factory, settings, *, number, mode, raw, start, end, block, 
                 if policy_row is None:raise ValueError("Live protocol policy was not committed")
                 if source.get("classification")!="authenticated_explorer_capture":raise ValueError("Live editions require authenticated Explorer observations")
                 if number==1:
-                    if start_ns not in (None,settings.genesis_checkpoint*10**9):raise ValueError("Invalid genesis checkpoint")
-                    if start!=settings.genesis_checkpoint or previous_hash!=GENESIS_HASH:raise ValueError("Invalid genesis lineage")
+                    if str(start_ns)!=str(settings.genesis_checkpoint_ns):raise ValueError("Invalid genesis checkpoint")
+                    if start!=settings.genesis_checkpoint or previous_hash!=settings.genesis_image_hash:raise ValueError("Invalid genesis lineage")
                 else:
                     prior=db.get(Artwork,f"live-{number-1:06d}")
                     if prior is None:raise ValueError("Previous canonical edition is required")
                     prior_epoch=db.get(Epoch,prior.epoch_id)
-                    if previous_hash!=prior.image_hash or str(start_ns)!=prior_epoch.payload["end_ns"]:raise ValueError("Consecutive checkpoint lineage mismatch")
+                    prior_art=prior.payload.get("onchain_art") or {}
+                    if prior.payload.get("nft",{}).get("status")!="minted" or previous_hash!=prior_art.get("static",{}).get("sha256") or str(start_ns)!=prior_epoch.payload["end_ns"]:raise ValueError("Consecutive checkpoint lineage mismatch")
             snapshot_ref = store.put(canonical(records))
             payload = {"snapshot":snapshot_ref,"records":records,"block":block,"beacon":beacon,
                        "selection":selection,"source":source,"previous_hash":previous_hash,
@@ -181,7 +182,7 @@ async def run_epoch(factory, settings, *, number, mode, raw, start, end, block, 
             "freeze_timestamp":frozen["freeze_timestamp"],"source":source,"block":frozen["block"],"beacon":frozen["beacon"],
             "selection":frozen["selection"],"master_seed":seed,"previous_artwork_hash":frozen["previous_hash"],
             "renderer_version":manifest["version"],"direction":direction,"ai":ai,"curation":persisted_direction.get("curation",{"source":"published_default"}),"files":refs,
-            "trust":{"data_completeness":"provider-trusted; Merkle membership is not a completeness proof", "randomness":"offchain BLS verification; contract stores commitments", "storage":"S3 content-addressed immutable keys" if settings.storage_provider=="s3" else "local content-addressed store; not IPFS-pinned", "image":"static file hash authoritative; replay requires pinned renderer dependencies"}}
+            "trust":{"data_completeness":"provider-trusted; Merkle membership is not a completeness proof", "randomness":"offchain BLS verification; contract stores commitments", "storage":"private local content-addressed source archive; canonical minted media lives on NEAR", "image":"static file hash authoritative; replay requires pinned renderer dependencies"}}
         if asset_mapping is not None:
             provenance["asset_mapping"]=refs["asset-networks.json"]
         if renderer_version=="echo-renderer-4":

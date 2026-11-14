@@ -43,6 +43,8 @@ async def collection_snapshot(rpc, settings):
     by_id = {l["token_id"]: l for l in listings}
     items = []
     for token in tokens:
+        from .weekly_onchain import resolve_media
+        token=resolve_media(token,settings.near_nft_contract)
         auction=auction_by_id.get(token["token_id"])
         in_custody=token["owner_id"]==auction_contract
         on_auction=bool(auction and auction["status"]=="Active" and auction["custody_verified"] and int(auction["end_ns"])>now_ns and in_custody)

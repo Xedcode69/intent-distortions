@@ -1,41 +1,25 @@
-# API v1
+# Current API
 
-Interactive schema: `/docs` in development; docs and demo routes are disabled in production. Routes below start with `/api/v1`; database readiness is separately available at `/readyz`.
+Public application routes use `/api/v1`. The Next.js server proxies the same prefix and keeps provider credentials private. `/readyz` is the backend hosting health check.
 
-The main frontend's `/demo` page is a separate read-only historical showcase backed by prepared static public assets. It does not use the development-only `/api/v1/demo/*` generation endpoints and is available in the production frontend without enabling those endpoints.
+| Route | Meaning |
+| --- | --- |
+| `GET /health`, `/protocol` | Public testnet configuration, automation state and policy commitment. |
+| `GET /artworks`, `/artworks/latest`, `/artworks/{id}` | Saved weekly editions plus the preserved `genesis`. |
+| `GET /artworks/{id}/traits`, `/artworks/{id}/verify` | Frozen attributes and integrity verification. |
+| `GET /drops` | Upcoming release, persisted capture/generation stages and archive lifecycle. |
+| `GET /onchain/prototype` | Pinned genesis contract/owner/commitments. |
+| `GET /onchain/prototype/static.svg`, `/animated.svg`, `/recipe.bin` | Hash-verified genesis bytes, recovered from NEAR. |
+| `GET /onchain/editions/{token}/{asset}` | Frozen weekly static.svg, animated.svg, recipe.bin or provenance.json. |
+| `GET /wallets/{account}/collection` | Current ownership in the weekly collection; genesis ownership is read separately. |
+| `GET /auctions`, `/auctions/{artwork-id}` | Finalized contract auction state. |
+| `GET /marketplace`, `/marketplace/collection`, `/marketplace/offers` | Configuration, collection/filter results, offers. |
+| `GET /economy`, `/economy/months`, `/economy/wallets/{token}` | Economic rules, monthly state and per-edition financial rights. |
+| `POST /receipts` | Validate/index a submitted finalized contract receipt. |
+| `POST /verify/merkle-proof`, `/verify/block-selection` | Recompute supplied membership/selection evidence. |
 
-Local historical mode additionally exposes `GET /api/v1/replay/progress`: allowlisted phase, interval, received rows, pages, elapsed time and completed capture counts. The total and collection percentage remain null until pagination completes; completed collection reports 100 independently of later artwork verification. Production and other execution modes return 404. The route reads no integration credentials and has no write operation.
+Wallet-authorized transactions perform bids, sales, offers, withdrawals and claims. Backend endpoints do not sign user purchases. The constrained worker signs scheduled publication and permissionless maintenance only when explicitly enabled. Cross-chain funding endpoints are disabled.
 
-| Resource | Routes |
-|---|---|
-| Health/configuration | `GET /health`, `/protocol` (no secret values) |
-| Epochs | `GET /epochs`, `/epochs/current`, `/epochs/{id}`, `/epochs/{id}/statistics`, `/epochs/{id}/provenance` |
-| Drops | `GET /drops?offset=0&limit=12` — next schedule, edition-specific creation progress, latest artwork and paginated archive |
-| Artworks | `GET /artworks`, `/artworks/latest`, `/artworks/{id}`, `/artworks/{id}/dna`, `/artworks/{id}/manifest`, `/artworks/{id}/verify`, `/artworks/{id}/traits` |
-| Files | `GET /content/{sha256}`; local byte validation or production redirect to the immutable artifact CDN |
-| Auctions | `GET /auctions`, `/auctions/active`, `/auctions/{edition-id}`, `/auctions/{edition-id}/bids` |
-| Analytics | `GET /analytics/summary`, `/analytics/chain-distribution`, `/analytics/weekly-activity`, `/analytics/treasury` |
-| Verification | `POST /verify/block-selection`, `/verify/merkle-proof`, `/verify/artwork` |
-| Demo | `POST /demo/run-epoch`, `GET /demo/status` |
-| Operations | `GET /admin/jobs`, `/admin/releases` with bearer `ADMIN_TOKEN` over the private network |
-| Receipt indexing | `POST /receipts` with transaction hash/sender; independently verified against finalized configured-contract outcomes |
-| Marketplace | `GET /marketplace`, `/marketplace/tokens`, `/marketplace/tokens/{token-id}`, `/marketplace/listings`, `/marketplace/offers`, `/marketplace/balances/{account}`, `/marketplace/funding/{account}` |
-| Holder royalties | `GET /marketplace/royalties`, `/marketplace/royalties/{cycle}/shares` |
-| Wallet collection | `GET /wallets/{account-id}/collection?offset=0&limit=20` |
-| Cross-chain funding | `GET /marketplace/crosschain/tokens`, `POST /marketplace/crosschain/quote`, `GET /marketplace/crosschain/status` (enabled mainnet only) |
+Raw source captures, cursors, API keys and signed journals are never returned in drop progress. Live content reads allow only public source-preview/scene files; canonical minted media comes from the onchain endpoints. Hash verification does not prove source completeness or ownership. Lists accept bounded pagination; cached chain snapshots may lag by a short refresh interval.
 
-Block verification input: `{ "epoch":1, "sunday_start":1794096000, "beacon":{...} }`. The signature and scheduled round are recomputed. This endpoint returns the selected timestamp; block/finality checking is a separate archival RPC operation.
-
-Merkle input: `{ "record":{...}, "proof":[{"hash":"64 hex","side":"left"}], "root":"64 hex" }`. Artwork input: `{ "id":"demo-000001", "rerender":true }`.
-
-Demo generation is restricted to development/demo configuration, loopback clients and allowed browser origins. Repeated runs return existing frozen state. There is deliberately no public reset route; use a new disposable local demo database for a separate experiment. Production editions must never be reset.
-
-No backend endpoint submits user bids. All bids/claims use a wallet-authorized contract transaction. Auction views query finalized onchain state. The bid-history route returns only successful indexed receipts and labels coverage as partial; its empty array is not proof of no historical bids. Undeployed treasury responses contain zero earned revenue. `/analytics/curation` reads the current permitted owner choice from the contract.
-
-The traits route returns frozen artwork attributes and their source/document hashes. Minted editions additionally verify root-level NFT metadata before reporting `published`; conflicting traits return 409. Unminted replay traits do not imply NFT ownership. See [NFT traits](NFT_TRAITS.md) for the metadata schema and legacy behavior.
-
-`/drops` is read-only. It follows the next uncreated live edition independently of older active auctions, reports the scheduled beacon and data-freeze/earliest-creation times separately, and exposes only allowlisted counters and saved generation phases. Totals remain null until a collection pass completes; its eligible count is computed from the successful exact-interval snapshot. Counts reset for each reconciliation pass. Saved artwork becomes visible without triggering another run. Archive entries include image/traits links, source counts, schedule and separate NFT/auction statuses; raw records, provider cursors and credentials are excluded. Preview/replay archives remain labelled and do not advance production edition numbering.
-
-Artwork and epoch lists accept `limit` (1–100) and nonnegative `offset`. Epoch detail omits the full record array and links the immutable snapshot. Production rerender verification requires administrator authorization; public integrity checks remain bounded. The public frontend proxy excludes administrator/demo paths. `/health` reports worker-managed integrations in production and does not imply credentialed acceptance.
-
-Hash verification also has a process-wide concurrency bound (default one) to control dataset memory use; a busy verifier returns 429 with `Retry-After`. Production blob requests redirect to CloudFront instead of buffering whole snapshots through the API. Size the worker/API and reconciliation window against actual authenticated dataset volume before commissioning.
+Legacy replay/lab endpoints and synthetic fixture generation are development tools. Hosted routes exclude demo mutation; the frontend proxy excludes demo/admin paths. Read the README and managed-cloud.md for the one shipped testnet profile.

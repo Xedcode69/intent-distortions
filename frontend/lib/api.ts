@@ -3,6 +3,7 @@ export type Art = {
   id:string; edition:string; number:number; mode:string; title:string; description:string;
   composition:string; palette:string[]; image:string; svg:string; thumbnail:string; image_hash:string;
   seed:string; merkle_root:string; start:number; end:number; ai_provider:string;
+  onchain_art?:{format:string;static_sha256:string;animated_sha256:string;recipe_sha256:string;animated_url:string;sealed:boolean};
   provenance:{uri:string;sha256:string}; manifest:{uri:string;sha256:string};
   stats:{total_swaps:number;unique_chains:number;chain_diversity_score:number;chains:Record<string,number>;activity:number[];public_volume_usd:string;volume_coverage:number;particle_count:number;dominant_routes:Record<string,number>};
   block:{height:number;hash:string;verified:boolean}; nft:{status:string;token_id:string|null}; auction:{status:string;highest_bid:string|null};

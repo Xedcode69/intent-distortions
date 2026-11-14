@@ -137,7 +137,7 @@ impl Economy {
             editions: UnorderedMap::new(b"econ_ed".to_vec()),
             months: UnorderedMap::new(b"econ_mo".to_vec()),
             release_tokens: LookupMap::new(b"econ_re".to_vec()),
-            next_close: 202612,
+            next_close: 202611,
             treasury_credit: 0,
             treasury_pending: None,
             treasury_earned: 0,
@@ -183,6 +183,7 @@ impl EchoNFT {
         creator: AccountId,
         treasury: AccountId,
     ) -> Self {
+        assert!(env::current_account_id().as_str().ends_with(".testnet"), "Testnet prototype only");
         assert_ne!(
             auction_contract, creator,
             "Creator must differ from auction"
@@ -195,6 +196,18 @@ impl EchoNFT {
 
     #[payable]
     pub fn mint_scheduled_artwork(
+        &mut self,
+        release_ns: U64,
+        metadata: TokenMetadata,
+        commitment: Commitment,
+    ) -> Token {
+        let _=(release_ns,metadata,commitment);
+        panic!("Use staged frozen onchain mint");
+    }
+}
+
+impl EchoNFT {
+    pub(crate) fn mint_scheduled_impl(
         &mut self,
         release_ns: U64,
         metadata: TokenMetadata,
@@ -318,7 +331,12 @@ impl EchoNFT {
         self.mint_impl(receiver, metadata, commitment, Some(edition))
     }
 
+}
+
+#[near]
+impl EchoNFT {
     /// Startup/storage reserves come from operator funding, never prize liabilities.
+    #[payable]
     pub fn create_edition_wallet(&mut self, token_id: String) -> Promise {
         let mut d = self.edition(&token_id);
         assert_eq!(
@@ -577,7 +595,7 @@ impl EchoNFT {
             crate::clock::now() >= calendar::cutoff(cycle),
             "Month still open"
         );
-        if cycle > 202612 {
+        if cycle > 202611 {
             let prev = if cycle % 100 == 1 {
                 (cycle / 100 - 1) * 100 + 12
             } else {
@@ -866,6 +884,7 @@ impl EchoNFT {
             "status":"onchain","currency":"NEAR","creator":e.creator,"treasury":e.treasury,"treasury_bps":2000,"vault_bps":8000,"early_exit_bps_of_vault":4000,
             "treasury_credit":e.treasury_credit.to_string(),"treasury_pending":e.treasury_pending,"treasury_earned":e.treasury_earned.to_string(),"gross_earned":e.gross_earned.to_string(),
             "hub_liability":e.hub_liability.to_string(),"next_close":e.next_close,"first_edition_ns":calendar::FIRST_EDITION.to_string(),"first_auction_ns":calendar::FIRST_AUCTION.to_string(),
+            "wallet_startup_yocto":((VAULT_WASM.len() as u128+6000)*env::storage_byte_cost().as_yoctonear()+6*10u128.pow(22)).to_string(),
             "vault_code_hash":beacon::hex(&env::sha256(VAULT_WASM)),"drand_chain":beacon::CHAIN,"owner_snapshot":"last_finalized_transfer_before_utc_cutoff","exited_ticket_reentry":false}),
         }
     }

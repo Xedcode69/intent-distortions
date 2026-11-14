@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     database_url: str = Field(default="sqlite:///./data/echoes-demo.db",repr=False)
     data_dir: Path = ROOT / "data"
     admin_token: str = Field(default="",repr=False)
-    near_network: Literal["testnet", "mainnet"] = "testnet"
+    near_network: Literal["testnet"] = "testnet"
     near_rpc_url: str = "https://rpc.testnet.near.org"
     near_mainnet_rpc_url: str = "https://archival-rpc.mainnet.near.org"
     near_nft_contract: str = ""
@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     onchain_art_contract: str = ""
     onchain_art_token_id: str = "ONCHAIN-PROTOTYPE-000001"
     expected_onchain_art_code_hash: str = ""
+    onchain_renderer_binary: str = ""
+    genesis_image_hash: str = "b870866d3f2eded46854edaf3f941ddd8f8bdf3d820ca5a413aa253893b2424b"
+    genesis_checkpoint_ns: str = "1794097030218994184"
     near_intents_1click_jwt: str = Field(default="",repr=False)
     marketplace_crosschain_enabled: bool = False
     near_intents_explorer_url: str = "https://explorer.near-intents.org/api/v0"
@@ -34,21 +37,15 @@ class Settings(BaseSettings):
     near_ai_base_url: str = "https://cloud-api.near.ai/v1"
     near_ai_text_model: str = ""
     reconciliation_delay_seconds: int = 3600
-    genesis_checkpoint: int = 1793491200
+    genesis_checkpoint: int = 1794097030
     scheduler_enabled: bool = False
     cors_origin: str = "http://localhost:3000"
-    service_role: Literal["api","worker","operator"] = "api"
+    service_role: Literal["api","worker","operator","combined"] = "api"
     public_origin: str = "http://localhost:3000"
     allowed_hosts: list[str] = ["localhost","127.0.0.1","testserver"]
-    storage_provider: Literal["local_content_addressed","s3"] = "local_content_addressed"
-    s3_bucket: str = ""
-    s3_endpoint_url: str = ""
-    s3_region: str = "us-east-1"
-    s3_access_key_id: str = Field(default="",repr=False)
-    s3_secret_access_key: str = Field(default="",repr=False)
-    artifact_public_url: str = ""
+    storage_provider: Literal["local_content_addressed"] = "local_content_addressed"
     protocol_id: str = "near-echoes-local"
-    first_release_sunday: str = "2026-11-08"
+    first_release_sunday: str = "2026-11-15"
     freeze_observation_max_age_seconds: int = Field(default=3600,ge=30,le=7200)
     allow_ai_fallback: bool = True
     worker_poll_seconds: int = Field(default=30,ge=5,le=300)
@@ -81,8 +78,9 @@ class Settings(BaseSettings):
             issues.append("production requires PostgreSQL")
         if not self.public_origin.startswith("https://"): issues.append("PUBLIC_ORIGIN must use HTTPS")
         if self.protocol_id in ("", "near-echoes-local"): issues.append("a distinct PROTOCOL_ID is required")
-        if self.storage_provider!="s3" or not self.s3_bucket or not self.artifact_public_url.startswith("https://"):
-            issues.append("durable S3 storage and HTTPS ARTIFACT_PUBLIC_URL are required")
+        if self.storage_provider!="local_content_addressed":
+            issues.append("the testnet prototype uses a persistent local DATA_DIR")
+        if not self.onchain_renderer_binary:issues.append("ONCHAIN_RENDERER_BINARY is required")
         if len(self.admin_token)<32: issues.append("ADMIN_TOKEN must contain at least 32 characters")
         if "*" in self.allowed_hosts: issues.append("explicit ALLOWED_HOSTS are required")
         if not self.allowed_hosts: issues.append("ALLOWED_HOSTS cannot be empty")
@@ -92,7 +90,7 @@ class Settings(BaseSettings):
         if self.near_market_contract:
             if self.near_market_contract in (self.near_nft_contract,self.near_auction_contract,self.near_minter_account,self.near_creator_account):issues.append("marketplace requires a separate account")
             if len(self.expected_market_code_hash)!=64 or any(c not in "0123456789abcdef" for c in self.expected_market_code_hash):issues.append("reviewed marketplace WASM hash required")
-        if self.marketplace_crosschain_enabled and (not self.near_market_contract or self.near_network!="mainnet"):issues.append("1Click checkout requires a deployed mainnet marketplace")
+        if self.marketplace_crosschain_enabled:issues.append("1Click checkout is unavailable for testnet NEAR")
         if not self.near_minter_account:issues.append("NEAR_MINTER_ACCOUNT is required")
         if not self.economy_enabled:issues.append("production requires the dedicated-account economy")
         if not self.near_creator_account or not self.near_treasury_account:issues.append("NEAR_CREATOR_ACCOUNT and NEAR_TREASURY_ACCOUNT are required")
@@ -105,13 +103,11 @@ class Settings(BaseSettings):
             issues.append("production provider endpoints must use HTTPS")
         if self.allow_ai_fallback: issues.append("production must explicitly disable AI fallback")
         if not self.near_ai_text_model: issues.append("the published AI model ID is required")
-        if self.service_role=="worker":
+        if self.service_role in ("worker","combined"):
             if not self.near_intents_partner_jwt: issues.append("worker requires Explorer partner JWT")
             if not self.near_ai_api_key or not self.near_ai_text_model: issues.append("worker requires NEAR AI key/model")
             if self.enable_chain_writes and (not self.near_minter_account or not self.signer_key_file):
                 issues.append("enabled signing requires a minter account and mounted SIGNER_KEY_FILE")
-            if self.near_network=="mainnet" and self.enable_chain_writes and not self.mainnet_writes_approved:
-                issues.append("mainnet writes require explicit owner approval")
         if issues: raise ValueError("; ".join(issues))
         return self
 

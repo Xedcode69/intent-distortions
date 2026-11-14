@@ -1,0 +1,38 @@
+{
+  "schema": "intent-distortions-public-deployment-v1",
+  "network": "testnet",
+  "date": "2026-11-14",
+  "format": "intent-distortions-weekly-onchain-v1",
+  "clock": "real_block_timestamp",
+  "contracts": [
+    {
+      "role": "nft",
+      "account": "weekly-nft.id-operator.testnet",
+      "code_sha256": "ca9fef1af7215e98185a51e986899da7481999046193f6ae4cc854826c6a1c3f",
+      "status": "succeeded",
+      "transaction_url": "https://testnet.nearblocks.io/txns/Egd4kDTY28LZhSMuNwEnAS9iEvsbjLakdf8jqLvvoGLp",
+      "access_keys": 0
+    },
+    {
+      "role": "auction",
+      "account": "weekly-auction.id-operator.testnet",
+      "code_sha256": "165628e0a8f656b39f708a8c854a03975fd9d7e7ebea4596975ae5fc213bcd7d",
+      "status": "succeeded",
+      "transaction_url": "https://testnet.nearblocks.io/txns/6Uqwuunykxc6TpuGUiDiovy5cBuEAttn4YbvGrmfH7UP",
+      "access_keys": 0
+    },
+    {
+      "role": "market",
+      "account": "weekly-market.id-operator.testnet",
+      "code_sha256": "eb33b03b695e8c062cb5121c17d97f5e383ca4d16a6245cce8fd1ca0f7b1d397",
+      "status": "succeeded",
+      "transaction_url": "https://testnet.nearblocks.io/txns/Cm9XmHasYkw7hTtnZXX17YUqZ2Hm4CSYL53RHTsyUvqy",
+      "access_keys": 0
+    }
+  ],
+  "vault_code_sha256": "a893196b271997ecdb00668d3877188c22f4d9c98d404f0492b4cb0dedc3c19f",
+  "preserved_genesis": "art-v1.id-operator.testnet",
+  "hosting": "not_deployed",
+  "server_signing": "disabled_locally",
+  "weekly_end_to_end_mint": "pending first scheduled release"
+}

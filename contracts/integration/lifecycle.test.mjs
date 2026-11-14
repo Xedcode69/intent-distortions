@@ -1,4 +1,5 @@
 import test from "node:test";
+import {mintFrozen} from "./frozen-edition.mjs";
 import assert from "node:assert/strict";
 import {readFile,writeFile} from "node:fs/promises";
 import {fileURLToPath} from "node:url";
@@ -10,7 +11,11 @@ import {SandboxServer} from "near-workspaces/dist/server/server.js";
 // receipt execution, gas charging and the unmodified production WASM.
 const originalStart=SandboxServer.prototype.start;
 SandboxServer.prototype.start=async function(){
- const path=`${this.homeDir}/genesis.json`,genesis=JSON.parse(await readFile(path,"utf8"));
+ const path=`${this.homeDir}/genesis.json`;
+ // Test-only genesis root name lets the shipped .testnet guard run unchanged.
+ const genesis=JSON.parse((await readFile(path,"utf8")).replaceAll("test.near","testnet"));
+ const keyPath=`${this.homeDir}/validator_key.json`;
+ await writeFile(keyPath,(await readFile(keyPath,"utf8")).replaceAll("test.near","testnet"));
  genesis.epoch_length=1_000_000_000;
  await writeFile(path,JSON.stringify(genesis));
  return originalStart.call(this);
@@ -43,7 +48,7 @@ async function advance(w,target){
 
 test("real WASM receipts: keyless accounts, refunds, vault exit, rollover and verified prize",{timeout:900000},async()=>{
  console.log("Starting isolated NEAR sandbox");
- const worker=await Worker.init();
+ const worker=await Worker.init({rootAccountId:"testnet"});
  console.log("Sandbox RPC ready");
  try{
   const root=worker.rootAccount;
@@ -62,29 +67,27 @@ test("real WASM receipts: keyless accounts, refunds, vault exit, rollover and ve
   await nft.call(nft,"new_economy",{owner_id:root.accountId,minter:operator.accountId,auction_contract:auction.accountId,creator:team.accountId,treasury:treasury.accountId},opts());
   await auction.call(auction,"new_economy",{owner:operator.accountId,nft_contract:nft.accountId,creator:team.accountId,treasury:treasury.accountId,min_bid:String(N),increment:String(N/10n)},opts());
   await market.call(market,"new",{nft_contract:nft.accountId,primary_auction:auction.accountId,creator:team.accountId},opts());
-  console.log("Initialized production WASM contracts");
+  console.log("Initialized real-clock testnet WASM contracts");
   await advance(worker,FIRST+6n*WEEK);
   console.log("Advanced sandbox clock to edition schedule");
   const all=[];
   for(let i=0;i<7;i++){
    const release=FIRST+BigInt(i)*WEEK,epoch=i+1,bytes=Buffer.alloc(32,epoch),hash=bytes.toString("hex");
-   const metadata={title:`Echo ${epoch}`,media:"https://example.com/image",media_hash:bytes.toString("base64"),copies:1,reference:"https://example.com/proof",reference_hash:bytes.toString("base64"),
-    extra:JSON.stringify({trait_schema:"echo-nft-traits-v1",attributes:[{trait_type:"Material",value:"glass"},...Array.from({length:32},(_,n)=>({trait_type:`Test scene control ${n}`,value:n/32}))],traits_reference:{uri:"https://example.com/traits",sha256:"03".repeat(32)}})};
-   await operator.call(nft,"mint_scheduled_artwork",{release_ns:String(release),metadata,commitment:{epoch,image_hash:hash,provenance_hash:hash,merkle_root:hash,seed:hash,block_hash:"sandbox-block"}},opts(N/10n));
-   const token=await nft.view("get_epoch_token",{epoch});all.push(token);
+   const token=await mintFrozen(operator,nft,release,epoch,opts);all.push(token);
    const extra=JSON.parse((await nft.view("nft_token",{token_id:token})).metadata.extra);
    assert.equal(extra.attributes.find(a=>a.trait_type==="Material").value,"glass");
    assert.equal(extra.attributes.find(a=>a.trait_type==="Monthly edition").value,i<3?i+1:i-2);
    assert.equal(extra.attributes.find(a=>a.trait_type==="Edition month").value,i<3?"November":"December");
    assert.equal(extra.traits_reference.sha256,"03".repeat(32));
-   await root.call(nft,"create_edition_wallet",{token_id:token},opts());
+   await root.call(nft,"create_edition_wallet",{token_id:token},opts(BigInt((await nft.view("get_economy",{})).wallet_startup_yocto)));
    const d=await nft.view("get_edition_wallet",{token_id:token});assert.equal(d.wallet_status,"Ready");
    assert.equal(d.account_id,`${i<3?`november2026-edition-${i+1}`:`december2026-edition-${i-2}`}.${nft.accountId}`);
    assert.equal((await worker.provider.query({request_type:"view_access_key_list",account_id:d.account_id,finality:"final"})).keys.length,0);
-   if(i<3)assert.equal((await nft.view("nft_token",{token_id:token})).owner_id,team.accountId);
+   assert.equal((await nft.view("nft_token_compact",{token_id:token})).owner_id,auction.accountId);
+   if(i<3)await operator.call(auction,"create_auction",{token_id:token},opts(N/20n));
   }
   const sold=all.slice(3,6),unsold=all[6];
-  console.log("Verified seven dedicated accounts and creator mints");
+  console.log("Verified seven immutable onchain editions and dedicated accounts");
   for(const who of [alice,bob])await who.call(auction,"register_bidder",{},opts(N/100n));
   let end=0n;
   for(const token of sold){
@@ -99,6 +102,7 @@ test("real WASM receipts: keyless accounts, refunds, vault exit, rollover and ve
   const noBid=await auction.view("get_auction",{token_id:unsold});end=BigInt(noBid.end_ns)>end?BigInt(noBid.end_ns):end;
   await advance(worker,end+1n);
   console.log("Verified bids/refunds; auction deadlines passed");
+  for(const token of all.slice(0,3))await root.call(auction,"finalize_auction",{token_id:token},opts());
   for(const token of sold){
    await root.call(auction,"finalize_auction",{token_id:token},opts());
    assert.equal((await auction.view("get_auction",{token_id:token})).status,"Settled");
@@ -161,7 +165,7 @@ test("real WASM receipts: keyless accounts, refunds, vault exit, rollover and ve
   for(const share of shares)await root.call(market,"pay_royalty",{cycle:royaltyCycle,index:String(share.index)},opts(1n));
   const royaltyPaid=await market.view("get_royalty_month",{cycle:royaltyCycle});assert.equal(royaltyPaid.pot,"0");assert.equal(royaltyPaid.paid,4);
   console.log("Verified full-collection month-end royalties, creator exclusion and immutable prior-owner payments");
-  for(let c=202612;c<cycle;c=nextMonth(c)){
+  for(let c=202611;c<cycle;c=nextMonth(c)){
    await root.call(nft,"close_month",{cycle:c},opts());await root.call(nft,"draw_month",{cycle:c,signature:"",previous_signature:""},opts());
   }
   await root.call(nft,"close_month",{cycle},opts());

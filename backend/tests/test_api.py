@@ -43,7 +43,3 @@ def test_api_reads_and_recomputes(monkeypatch,tmp_path):
         monkeypatch.setattr(main.settings,"execution_mode","demo")
         monkeypatch.setattr(main.settings,"app_env","production")
         assert c.post("/api/v1/demo/run-epoch").status_code==404
-        monkeypatch.setattr(main.settings,"storage_provider","s3")
-        monkeypatch.setattr(main.settings,"artifact_public_url","https://art.example")
-        redirect=c.get(a["image"],follow_redirects=False)
-        assert redirect.status_code==307 and redirect.headers["location"]==f'https://art.example/sha256/{a["image_hash"]}'

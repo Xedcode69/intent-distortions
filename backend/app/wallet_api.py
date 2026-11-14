@@ -52,4 +52,5 @@ async def collection(account_id: str, offset: int = Query(0, ge=0, le=100000),
     except Exception:
         # RPC URLs may contain credentials; provider exceptions are private.
         raise HTTPException(503, "Live collection could not be verified. Try again shortly.") from None
-    return {**result, "status": "onchain", "tokens": tokens, "total": total, "checked_at": int(time.time())}
+    from .services.weekly_onchain import resolve_media
+    return {**result, "status": "onchain", "tokens": [resolve_media(t,settings.near_nft_contract) for t in tokens], "total": total, "checked_at": int(time.time())}

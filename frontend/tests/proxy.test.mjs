@@ -11,7 +11,7 @@ test("production proxy forwards only HTTPS artifact redirects without following 
   try {
     globalThis.fetch=async(url,options)=>{
       assert.equal(url.host,"private-api:8000");assert.equal(options.redirect,"manual");
-      assert.equal(options.headers.get("host"),"echoes-api.internal");
+      assert.equal(options.headers.get("host"),null);
       assert.equal(options.headers.get("authorization"),null);
       return new Response(null,{status:307,headers:{location:"https://art.example/sha256/abc"}});
     };

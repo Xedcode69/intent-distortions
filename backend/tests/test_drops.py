@@ -32,7 +32,7 @@ def test_first_drop_schedule_does_not_start_generation_or_pretend_18utc_is_compl
     d=drop_feed(factory,settings(),now=ts('2026-11-13T12:00:00'))
     assert d['upcoming']['number']==1 and d['upcoming']['sunday']==FIRST
     assert d['upcoming']['beacon_at']==FIRST+18*3600 and d['upcoming']['freeze_at']==FIRST+19*3600
-    assert d['upcoming']['delivery']=='creator' and d['active'] is None and d['previous']==[]
+    assert d['upcoming']['delivery']=='auction' and d['active'] is None and d['previous']==[]
     with factory() as db:
         assert db.scalar(select(func.count()).select_from(Release))==db.scalar(select(func.count()).select_from(Job))==0
 
@@ -88,7 +88,7 @@ def test_preview_uses_launch_schedule_without_counting_replay_as_a_live_drop(fac
     assert d['active'] is None and d['previous'][0]['sunday']==ts('2026-11-08')
     assert d['previous'][0]['mode']=='historical_replay' and d['previous'][0]['nft_status']=='not_minted'
 
-def test_archive_is_paginated_and_switches_to_24h_auctions_in_december(factory):
+def test_archive_is_paginated_and_all_weekly_drops_use_24h_auctions(factory):
     with factory.begin() as db:
         for n in range(1,5):release(db,n,'settled');artwork(db,n)
     d=drop_feed(factory,settings(),now=ts('2026-12-10'),offset=1,limit=1)

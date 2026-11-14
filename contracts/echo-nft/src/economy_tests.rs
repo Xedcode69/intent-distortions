@@ -6,6 +6,7 @@ use near_sdk::{
     testing_env, NearToken, PromiseResult,
 };
 
+const DECEMBER_AUCTION:u64=calendar::FIRST_EDITION+21*calendar::DAY;
 fn id(s: &str) -> AccountId {
     s.parse().unwrap()
 }
@@ -20,13 +21,18 @@ fn ctx(who: &str, deposit: u128, time: u64) {
 }
 fn contract() -> EchoNFT {
     ctx("operator.testnet", 0, calendar::FIRST_EDITION);
-    EchoNFT::new_economy(
+    let mut c=EchoNFT::new_economy(
         id("gov.testnet"),
         id("operator.testnet"),
         id("auction.testnet"),
         id("team.testnet"),
         id("treasury.testnet"),
-    )
+    );
+    // These December financial fixtures follow an empty completed November.
+    ctx("keeper.testnet",0,calendar::cutoff(202611));
+    c.close_month(202611);
+    c.draw_month(202611,"".into(),"".into());
+    c
 }
 
 #[test]
@@ -34,7 +40,7 @@ fn permanent_royalty_ownership_uses_exact_month_end_and_last_finalized_owner() {
     let mut c = contract();
     let date = calendar::FIRST_EDITION;
     let token = mint(&mut c, date);
-    ctx("team.testnet", 1, date + calendar::DAY);
+    ctx("auction.testnet", 1, date + calendar::DAY);
     c.nft_transfer(id("alice.testnet"), token.clone(), None, None);
     ctx("alice.testnet", 1, date + 2 * calendar::DAY);
     c.nft_transfer(id("bob.testnet"), token.clone(), None, None);
@@ -60,11 +66,11 @@ fn permanent_royalty_ownership_uses_exact_month_end_and_last_finalized_owner() {
 fn market_cannot_transfer_with_a_stale_reviewed_financial_snapshot() {
     let mut c = contract();
     let token = mint(&mut c, calendar::FIRST_EDITION);
-    ctx("team.testnet", 1, calendar::FIRST_EDITION + 1);
+    ctx("auction.testnet", 1, calendar::FIRST_EDITION + 1);
     c.market_transfer(
         token,
         id("buyer.testnet"),
-        id("team.testnet"),
+        id("auction.testnet"),
         1,
         "00".repeat(32),
     );
@@ -80,7 +86,7 @@ fn mint_traits_remain_flat_and_immutable_with_authoritative_calendar_and_wallet(
     let metadata:TokenMetadata=near_sdk::serde_json::from_value(near_sdk::serde_json::json!({"title":"Echo","media":"https://art.example/image","media_hash":Base64VecU8(bytes.clone()),
         "copies":1,"reference":"https://art.example/proof","reference_hash":Base64VecU8(bytes),"extra":near_sdk::serde_json::json!({"trait_schema":"echo-nft-traits-v1","account_id":"fake.near",
             "attributes":[{"trait_type":"Material","value":"glass"},{"trait_type":"Edition month","value":"Fake"}],"traits_reference":{"sha256":"03".repeat(32),"uri":"https://art.example/traits"}}).to_string()})).unwrap();
-    let t = c.mint_scheduled_artwork(
+    let t = c.mint_scheduled_impl(
         U64(date),
         metadata,
         Commitment {
@@ -101,7 +107,7 @@ fn mint_traits_remain_flat_and_immutable_with_authoritative_calendar_and_wallet(
     assert_eq!(extra["attributes"][3]["value"], 1);
     assert_eq!(extra["trait_schema"], "echo-nft-traits-v1");
     assert!(extra.get("original_extra").is_none());
-    ctx("team.testnet", 1, date + 1);
+    ctx("auction.testnet", 1, date + 1);
     c.nft_transfer(id("alice.testnet"), t.token_id.clone(), None, None);
     assert_eq!(
         c.nft_token(t.token_id)
@@ -120,7 +126,7 @@ fn mint(c: &mut EchoNFT, date: u64) -> String {
     let hash = beacon::hex(&bytes);
     let metadata:TokenMetadata=near_sdk::serde_json::from_value(near_sdk::serde_json::json!({"title":"Echo","media":"https://art.example/image","media_hash":Base64VecU8(bytes.clone()),
         "copies":1,"reference":"https://art.example/proof","reference_hash":Base64VecU8(bytes)})).unwrap();
-    c.mint_scheduled_artwork(
+    c.mint_scheduled_impl(
         U64(date),
         metadata,
         Commitment {
@@ -157,17 +163,17 @@ fn funded(c: &mut EchoNFT, date: u64) -> String {
     t
 }
 #[test]
-fn november_team_mints_and_monthly_account_numbering() {
+fn november_auctions_and_monthly_account_numbering() {
     let mut c = contract();
     for i in 0..3 {
         let t = mint(&mut c, calendar::FIRST_EDITION + i * 7 * calendar::DAY);
-        assert_eq!(c.nft_token(t.clone()).unwrap().owner_id, id("team.testnet"));
+        assert_eq!(c.nft_token(t.clone()).unwrap().owner_id, id("auction.testnet"));
         assert_eq!(
             c.edition(&t).account_id.as_str(),
             format!("november2026-edition-{}.nft.testnet", i + 1)
         );
     }
-    let t = mint(&mut c, calendar::FIRST_AUCTION);
+    let t = mint(&mut c, DECEMBER_AUCTION);
     assert_eq!(
         c.nft_token(t.clone()).unwrap().owner_id,
         id("auction.testnet")
@@ -197,14 +203,14 @@ fn auction_activation_requires_scheduled_ready_undelivered_edition() {
     let mut d = c.edition(&team);
     d.wallet_status = WalletStatus::Ready;
     c.economy.as_mut().unwrap().editions.insert(&team, &d);
-    assert!(c.get_auction_candidate(team).is_none());
-    let token = mint(&mut c, calendar::FIRST_AUCTION);
+    assert!(c.get_auction_candidate(team).is_some());
+    let token = mint(&mut c, DECEMBER_AUCTION);
     assert!(c.get_auction_candidate(token.clone()).is_none());
     let mut d = c.edition(&token);
     d.wallet_status = WalletStatus::Ready;
     c.economy.as_mut().unwrap().editions.insert(&token, &d);
     assert!(c.get_auction_candidate(token.clone()).is_some());
-    ctx("auction.testnet", 1, calendar::FIRST_AUCTION);
+    ctx("auction.testnet", 1, DECEMBER_AUCTION);
     c.nft_transfer(id("alice.testnet"), token.clone(), None, None);
     assert!(c.get_auction_candidate(token).is_none());
 }
@@ -264,7 +270,7 @@ fn five_sales_two_exits_conserve_money_and_use_actual_beacon() {
 #[test]
 fn ownership_at_cutoff_is_not_changed_by_late_close_or_resale() {
     let mut c = contract();
-    let t = funded(&mut c, calendar::FIRST_AUCTION);
+    let t = funded(&mut c, DECEMBER_AUCTION);
     let cutoff = calendar::cutoff(202612);
     ctx("alice.testnet", 1, cutoff - 1);
     c.nft_transfer(id("bob.testnet"), t.clone(), None, None);
@@ -281,12 +287,12 @@ fn ownership_at_cutoff_is_not_changed_by_late_close_or_resale() {
 #[test]
 fn secondary_buyer_inherits_one_time_exit() {
     let mut c = contract();
-    let t = funded(&mut c, calendar::FIRST_AUCTION);
-    ctx("alice.testnet", 1, calendar::FIRST_AUCTION + 1);
+    let t = funded(&mut c, DECEMBER_AUCTION);
+    ctx("alice.testnet", 1, DECEMBER_AUCTION + 1);
     c.nft_transfer(id("bob.testnet"), t.clone(), None, None);
-    ctx("bob.testnet", 1, calendar::FIRST_AUCTION + 2);
+    ctx("bob.testnet", 1, DECEMBER_AUCTION + 2);
     let _ = c.withdraw_edition(t.clone());
-    ctx("bob.testnet", 1, calendar::FIRST_AUCTION + 3);
+    ctx("bob.testnet", 1, DECEMBER_AUCTION + 3);
     c.nft_transfer(id("carol.testnet"), t.clone(), None, None);
     let d = c.edition(&t);
     assert!(d.exited);
@@ -297,19 +303,19 @@ fn secondary_buyer_inherits_one_time_exit() {
 #[should_panic(expected = "Withdrawal unavailable")]
 fn resale_does_not_reset_exit() {
     let mut c = contract();
-    let t = funded(&mut c, calendar::FIRST_AUCTION);
-    ctx("alice.testnet", 1, calendar::FIRST_AUCTION + 1);
+    let t = funded(&mut c, DECEMBER_AUCTION);
+    ctx("alice.testnet", 1, DECEMBER_AUCTION + 1);
     let _ = c.withdraw_edition(t.clone());
-    ctx("alice.testnet", 1, calendar::FIRST_AUCTION + 2);
+    ctx("alice.testnet", 1, DECEMBER_AUCTION + 2);
     c.nft_transfer(id("bob.testnet"), t.clone(), None, None);
-    ctx("bob.testnet", 1, calendar::FIRST_AUCTION + 3);
+    ctx("bob.testnet", 1, DECEMBER_AUCTION + 3);
     let _ = c.withdraw_edition(t);
 }
 #[test]
 #[should_panic(expected = "cutoff passed")]
 fn exit_at_boundary_rejected() {
     let mut c = contract();
-    let t = funded(&mut c, calendar::FIRST_AUCTION);
+    let t = funded(&mut c, DECEMBER_AUCTION);
     ctx("alice.testnet", 1, calendar::cutoff(202612));
     let _ = c.withdraw_edition(t);
 }
@@ -317,18 +323,18 @@ fn exit_at_boundary_rejected() {
 #[should_panic(expected = "Current NFT owner")]
 fn former_owner_cannot_exit() {
     let mut c = contract();
-    let t = funded(&mut c, calendar::FIRST_AUCTION);
-    ctx("alice.testnet", 1, calendar::FIRST_AUCTION + 1);
+    let t = funded(&mut c, DECEMBER_AUCTION);
+    ctx("alice.testnet", 1, DECEMBER_AUCTION + 1);
     c.nft_transfer(id("bob.testnet"), t.clone(), None, None);
-    ctx("alice.testnet", 1, calendar::FIRST_AUCTION + 2);
+    ctx("alice.testnet", 1, DECEMBER_AUCTION + 2);
     let _ = c.withdraw_edition(t);
 }
 #[test]
 #[should_panic(expected = "already recorded")]
 fn allocation_cannot_be_replayed() {
     let mut c = contract();
-    let t = funded(&mut c, calendar::FIRST_AUCTION);
-    ctx("auction.testnet", 100, calendar::FIRST_AUCTION + 1);
+    let t = funded(&mut c, DECEMBER_AUCTION);
+    ctx("auction.testnet", 100, DECEMBER_AUCTION + 1);
     c.receive_auction_proceeds(t);
 }
 #[test]
@@ -342,8 +348,8 @@ fn free_team_nft_has_no_prize_allocation() {
 #[test]
 fn all_exits_roll_then_empty_month_carries_without_new_tickets() {
     let mut c = contract();
-    let t = funded(&mut c, calendar::FIRST_AUCTION);
-    ctx("alice.testnet", 1, calendar::FIRST_AUCTION + 1);
+    let t = funded(&mut c, DECEMBER_AUCTION);
+    ctx("alice.testnet", 1, DECEMBER_AUCTION + 1);
     let _ = c.withdraw_edition(t.clone());
     ctx("keeper.testnet", 0, calendar::cutoff(202612));
     c.close_month(202612);
@@ -363,15 +369,15 @@ fn all_exits_roll_then_empty_month_carries_without_new_tickets() {
 #[test]
 fn pending_transfer_cannot_exit_and_failed_transfer_restores_original_rights() {
     let mut c = contract();
-    let t = funded(&mut c, calendar::FIRST_AUCTION);
-    ctx("alice.testnet", 1, calendar::FIRST_AUCTION + 1);
+    let t = funded(&mut c, DECEMBER_AUCTION);
+    ctx("alice.testnet", 1, DECEMBER_AUCTION + 1);
     let _ = c.nft_transfer_call(id("market.testnet"), t.clone(), None, None, "".into());
     assert!(c.edition(&t).transfer_pending);
     testing_env_with_promise_results(
         VMContextBuilder::new()
             .current_account_id(id("nft.testnet"))
             .predecessor_account_id(id("nft.testnet"))
-            .block_timestamp(calendar::FIRST_AUCTION + 2)
+            .block_timestamp(DECEMBER_AUCTION + 2)
             .build(),
         PromiseResult::Successful(b"true".to_vec()),
     );
@@ -382,7 +388,7 @@ fn pending_transfer_cannot_exit_and_failed_transfer_restores_original_rights() {
 #[test]
 fn failed_funding_returns_liability_and_can_retry_without_double_credit() {
     let mut c = contract();
-    let t = funded(&mut c, calendar::FIRST_AUCTION);
+    let t = funded(&mut c, DECEMBER_AUCTION);
     let mut d = c.edition(&t);
     d.wallet_status = WalletStatus::Funding;
     c.economy.as_mut().unwrap().editions.insert(&t, &d);

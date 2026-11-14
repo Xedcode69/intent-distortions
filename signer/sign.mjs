@@ -12,8 +12,8 @@ export async function execute(request,env=process.env){
   if(key.getPublicKey().keyType!==0)throw new Error("Only Ed25519 signing keys are accepted");
   if(request.op==="public_key")return {public_key:key.getPublicKey().toString()};
   if(env.ENABLE_CHAIN_WRITES!=="true")throw new Error("Chain writes are disabled");
-  if(env.NEAR_NETWORK==="mainnet"&&env.MAINNET_WRITES_APPROVED!=="true")throw new Error("Mainnet signing not approved");
-  const nftMethods=["mint_weekly_artwork","mint_scheduled_artwork","create_edition_wallet","reconcile_wallet","fund_edition_wallet",
+  if(env.NEAR_NETWORK!=="testnet")throw new Error("Testnet signing only");
+  const nftMethods=["begin_onchain_art","append_onchain_recipe","verify_onchain_view","mint_onchain_art","create_edition_wallet","reconcile_wallet","fund_edition_wallet",
     "dispatch_exit","close_month","collect_edition","draw_month","pay_month","process_treasury"];
   const auctionMethods=["create_auction","finalize_auction","retry_custody","reconcile_settlement","forward_proceeds","reconcile_funding","process_refund"];
   const marketMethods=["prepare_royalties","pay_royalty"];
@@ -23,8 +23,10 @@ export async function execute(request,env=process.env){
   if(!allowed.includes(request.method))throw new Error("Signing request outside contract/method allowlist");
   const deposit=BigInt(request.deposit),gas=BigInt(request.gas);
   if(request.method==="pay_royalty") {if(deposit!==1n)throw new Error("Royalty delivery requires one yocto");}
-  else if(!["mint_weekly_artwork","mint_scheduled_artwork","create_auction"].includes(request.method)&&deposit!==0n)throw new Error("Maintenance calls require zero deposit");
-  const maxDeposit=request.method==="mint_scheduled_artwork"?1000000000000000000000000n:100000000000000000000000n;
+  else if(!["begin_onchain_art","mint_onchain_art","create_edition_wallet","create_auction"].includes(request.method)&&deposit!==0n)throw new Error("Maintenance calls require zero deposit");
+  const maxDeposit=request.method==="begin_onchain_art"?3000000000000000000000000n:
+    request.method==="create_edition_wallet"?2000000000000000000000000n:
+    request.method==="mint_onchain_art"?1000000000000000000000000n:100000000000000000000000n;
   if(deposit<0n||deposit>maxDeposit||gas<1n||gas>200000000000000n)throw new Error("Signing limits exceeded");
   const transaction=createTransaction(request.account_id,key.getPublicKey(),request.receiver_id,BigInt(request.nonce),
     [actionCreators.functionCall(request.method,request.args,gas,deposit)],base58.decode(request.block_hash));

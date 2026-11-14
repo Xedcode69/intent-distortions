@@ -15,6 +15,7 @@ from .services.epoch_manager import run_demo, sunday_schedule
 from .services.storage import ContentStore,content_store
 from .services.provenance import verify_artwork
 from .services.testnet_profile import data_mode, data_modes
+from .services.collection_art import genesis,present
 from .services.merkle import verify as verify_merkle
 from .services.randomness import verify_beacon, select_timestamp, round_for
 
@@ -37,12 +38,19 @@ async def lifespan(app):
     if settings.execution_mode=="demo" and settings.app_env=="development":
         await run_demo(factory,settings)
     task=None
-    if settings.scheduler_enabled and settings.app_env!="production":
+    if settings.scheduler_enabled and settings.execution_mode=="live" and settings.service_role=="combined":
+        from .workers.production import main as weekly_worker
+        task=asyncio.create_task(weekly_worker(settings,factory))
+        # Fail startup if the worker's initial preflight fails immediately.
+        await asyncio.sleep(0)
+    elif settings.scheduler_enabled and settings.app_env!="production" and settings.execution_mode!="live":
         from .workers.scheduler import scheduler
         task=asyncio.create_task(scheduler(factory,settings))
+    app.state.weekly_worker=task
     yield
     if task:
         task.cancel()
+        await asyncio.gather(task,return_exceptions=True)
 
 app = FastAPI(title="Intent Distortions",version="1.0.0",lifespan=lifespan,
               docs_url=None if settings.app_env=="production" else "/docs",redoc_url=None if settings.app_env=="production" else "/redoc")
@@ -73,6 +81,9 @@ async def invalid(request,exc):
     return JSONResponse(status_code=422,content={"detail":str(exc)})
 
 def art(id):
+    if id=="genesis":
+        value=genesis(settings)
+        if value:return value
     with factory() as db:
         row=db.get(Artwork,id)
         if row is None or row.payload["mode"] not in data_modes(settings):
@@ -81,7 +92,11 @@ def art(id):
 
 def all_art(limit=100,offset=0):
     with factory() as db:
-        return [r.payload for r in db.scalars(select(Artwork).join(Epoch).where(Epoch.mode.in_(data_modes(settings))).order_by(Epoch.number.desc()).limit(limit).offset(offset))]
+        rows=[present(r.payload) for r in db.scalars(select(Artwork).join(Epoch).where(Epoch.mode.in_(data_modes(settings))).order_by(Epoch.number.desc()).limit(limit).offset(offset))]
+        total=db.scalar(select(func.count()).select_from(Artwork).join(Epoch).where(Epoch.mode.in_(data_modes(settings))))
+        first=genesis(settings)
+        if first and offset<=total<offset+limit:rows.append(first)
+        return rows
 
 def admin(request: Request):
     if not settings.admin_token or not hmac.compare_digest(request.headers.get("Authorization",""),f"Bearer {settings.admin_token}"):
@@ -101,7 +116,9 @@ async def health():
     if settings.execution_mode=="testnet_rehearsal":
         from .services.testnet_lab import clock_status
         extra=await clock_status(settings)
-    return {**extra,"status":"ok","mode":settings.execution_mode,"network":settings.near_network,
+    worker=getattr(app.state,"weekly_worker",None)
+    automation="blocked" if worker and worker.done() else "running" if worker else "disabled"
+    return {**extra,"status":"ok","mode":settings.execution_mode,"network":settings.near_network,"automation":automation,
             "integrations":{"explorer":"recorded_capture" if settings.execution_mode in ("historical_replay","testnet_rehearsal") else "worker_managed" if settings.app_env=="production" else "configured" if settings.near_intents_partner_jwt else "credentials_required",
             "near_ai":"recorded_direction" if settings.execution_mode in ("historical_replay","testnet_rehearsal") else "worker_managed" if settings.app_env=="production" else "configured" if settings.near_ai_api_key else "deterministic_fallback",
             "nft":"configured" if settings.near_nft_contract else "not_deployed", "auction":"configured" if settings.near_auction_contract else "not_deployed"},
@@ -109,6 +126,8 @@ async def health():
 
 @app.get("/readyz")
 def ready():
+    worker=getattr(app.state,"weekly_worker",None)
+    if worker and worker.done():raise HTTPException(503,"Weekly automation stopped; operator attention required")
     with factory() as db:
         db.execute(text("SELECT 1"))
         db.execute(select(Release.number).limit(1))
@@ -133,27 +152,41 @@ def latest():
     return rows[0]
 
 @app.get("/api/v1/artworks/{id}")
-def artwork(id:str): return art(id)
+def artwork(id:str): return present(art(id))
 
 @app.get("/api/v1/artworks/{id}/dna")
 @app.get("/api/v1/artworks/{id}/manifest")
-def dna(id:str): return json.loads(store.get(art(id)["manifest"]["sha256"]))
+def dna(id:str):
+    if id=="genesis":raise HTTPException(404,"Genesis geometry is available through the onchain recipe endpoint")
+    return json.loads(store.get(art(id)["manifest"]["sha256"]))
 
 @app.get("/api/v1/artworks/{id}/verify")
-def verify(id:str): return bounded_verification(art(id))
+async def verify(id:str):
+    if id=="genesis":
+        art(id)
+        from .onchain_api import read
+        state=await read()
+        await read("static");await read("animated");await read("recipe")
+        checks={"sealed":state["edition"]["sealed"],"keyless":state["keyless"],"static_hash":True,"animated_hash":True,"recipe_hash":True}
+        return {"valid":all(checks.values()),"checks":checks,"scope":"Pinned onchain genesis media and recipe; source-provider completeness is separate"}
+    return bounded_verification(art(id))
 
 @app.get("/api/v1/artworks/{id}/traits")
 async def artwork_traits(id:str):
+    if id=="genesis":return {**art(id)["traits"],"onchain_status":"published","mint_status":"minted","edition_attributes":[]}
     from .services.nft_traits import trait_bundle
     artwork=art(id)
     result=trait_bundle(store,artwork)
     status="not_published";edition_attributes=[];reference=None
     if artwork["nft"]["status"]=="minted" and settings.near_nft_contract:
         from .services.near_rpc import NearRPC
-        token=await NearRPC(settings.near_rpc_url).view(settings.near_nft_contract,"nft_token",{"token_id":artwork["nft"]["token_id"]})
+        token=await NearRPC(settings.near_rpc_url).view(settings.near_nft_contract,"nft_token_compact",{"token_id":artwork["nft"]["token_id"]})
         try:extra=json.loads((token or {}).get("metadata",{}).get("extra") or "{}")
         except (ValueError,TypeError):extra={}
         if not isinstance(extra,dict):extra={}
+        if artwork.get("onchain_art"):
+            if not all(a in extra.get("attributes",[]) for a in result["attributes"]):raise HTTPException(409,"Frozen NFT trait mismatch")
+            return {**result,"mint_status":"minted","onchain_status":"published","edition_attributes":[a for a in extra["attributes"] if a["trait_type"] in ("Edition month","Edition year","Monthly edition")]}
         reference=extra.get("traits_reference")
         if reference:
             if reference.get("sha256")!=result["sha256"] or not all(a in extra.get("attributes",[]) for a in result["attributes"]):
@@ -234,10 +267,14 @@ def provenance(id:str): return json.loads(store.get(art(id)["provenance"]["sha25
 
 @app.get("/api/v1/content/{digest}")
 def content(digest:str):
-    if settings.app_env=="production" and settings.storage_provider=="s3":
-        if len(digest)!=64 or any(c not in "0123456789abcdef" for c in digest):raise HTTPException(422,"Invalid content hash")
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse(f'{settings.artifact_public_url.rstrip("/")}/sha256/{digest}',status_code=307,headers={"Cache-Control":"public,max-age=31536000,immutable"})
+    if settings.execution_mode=="live":
+        # Source records remain private even when their snapshot hash is public.
+        allowed=set()
+        with factory() as db:
+            for row in db.scalars(select(Artwork)):
+                p=json.loads(store.get(row.payload["provenance"]["sha256"]))
+                allowed.update(ref["sha256"] for name,ref in p["files"].items() if name in ("artwork.png","artwork.svg","artwork-manifest.json","thumbnail.webp","visual-features.json"))
+        if digest not in allowed:raise HTTPException(404)
     try: data=store.get(digest)
     except FileNotFoundError: raise HTTPException(404)
     kind="application/json"
@@ -275,8 +312,8 @@ async def treasury():
 async def economy():
     if not settings.near_nft_contract:
         return {"status":"not_deployed","currency":"NEAR","treasury_bps":2000,"vault_bps":8000,"early_exit_bps_of_vault":4000,
-            "creator":None,"treasury":None,"treasury_earned":"0","treasury_credit":"0","next_close":202612,
-            "first_edition_ns":"1794700800000000000","first_auction_ns":"1796515200000000000","exited_ticket_reentry":False}
+            "creator":None,"treasury":None,"treasury_earned":"0","treasury_credit":"0","next_close":202611,
+            "first_edition_ns":"1794700800000000000","first_auction_ns":"1794700800000000000","exited_ticket_reentry":False}
     from .services.near_rpc import NearRPC
     return await NearRPC(settings.near_rpc_url).view(settings.near_nft_contract,"get_economy",{})
 
@@ -297,7 +334,7 @@ async def edition_wallet(token_id:str):
     state=None
     if wallet["wallet_status"] not in ("Uncreated","Creating"):
         state=await rpc.view(wallet["account_id"],"get_state",{})
-    token=await rpc.view(settings.near_nft_contract,"nft_token",{"token_id":token_id})
+    token=await rpc.view(settings.near_nft_contract,"nft_token_compact",{"token_id":token_id})
     return {**wallet,"vault_state":state,"current_owner":token["owner_id"] if token else None}
 
 @app.get("/api/v1/economy/months")

@@ -22,16 +22,18 @@ def main():
     if errors:
         for error in errors:print(f"Render {list(error.path)}: {error.message}")
         raise SystemExit(1)
-    services={service["name"]:service for service in value["services"]}
-    assert services["intent-distortions-api"]["type"]=="pserv"
-    assert services["intent-distortions-worker"]["numInstances"]==1
-    assert services["intent-distortions-explainer"]["runtime"]=="static"
-    assert "envVars" not in services["intent-distortions-explainer"]
-    for service in services.values():assert service["autoDeployTrigger"]=="off"
-    template=json.loads((ROOT/"deploy/artifacts.cloudformation.json").read_text())
-    assert template["Resources"]["Artifacts"]["DeletionPolicy"]=="Retain"
-    assert template["Resources"]["Artifacts"]["Properties"]["ObjectLockEnabled"] is True
-    print("Render Blueprint matches official schema; production/demo isolation checks pass.")
-    print("S3 CloudFormation JSON parses and retention checks pass; AWS-side resource validation still required.")
+    assert len(value["services"])==1
+    service=value["services"][0]
+    assert service["type"]=="web" and service["numInstances"]==1
+    assert service["disk"]["mountPath"]=="/app/data"
+    env={item["key"]:item for item in service["envVars"]}
+    assert env["SERVICE_ROLE"]["value"]=="combined"
+    assert env["NEAR_NETWORK"]["value"]=="testnet"
+    assert env["ENABLE_CHAIN_WRITES"]["value"]=="false"
+    assert not any(key.startswith("S3_") or key=="ARTIFACT_PUBLIC_URL" for key in env)
+    assert service["autoDeployTrigger"]=="off"
+    frontend=json.loads((ROOT/"frontend/vercel.json").read_text())
+    assert frontend["framework"]=="nextjs"
+    print("Render schema and single testnet service/disk boundaries pass; Vercel Next.js config passes.")
 
 if __name__=="__main__":main()

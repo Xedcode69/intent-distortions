@@ -1,6 +1,6 @@
 # NFT, auction and edition-vault contracts
 
-**Current release: economy v3.** Read [ECONOMY.md](ECONOMY.md) for dedicated keyless edition accounts, November creator editions, 24-hour auctions, 20/80 allocation, early exits, calendar-month rollover, on-chain drand verification and deployment initializers. Build all three contracts with `uv run --locked python scripts/build_contracts.py --test`; this builds and embeds the vault before compiling NFT. Fresh accounts and all three reviewed artifact hashes are required.
+**Current release: economy v3.** Read [ECONOMY.md](ECONOMY.md) for dedicated keyless edition accounts, fully onchain November auctions, 24-hour auctions, 20/80 allocation, early exits, calendar-month rollover, on-chain drand verification and deployment initializers. Build all three contracts with `uv run --locked python scripts/build_contracts.py --test`; this builds and embeds the vault before compiling NFT. Fresh testnet accounts and reviewed artifact hashes are required. The staged frozen-art mint replaces hosted-image minting; see ONCHAIN_ART.md and managed-cloud.md.
 
 The remaining sections describe the retained **legacy v2 laboratory API**, not the current production policy. Its seven-day duration and three-way allocations are rejected when `ECONOMY_ENABLED=true` (required in production). A v2 deployment needs an independently reviewed migration or replacement accounts.
 

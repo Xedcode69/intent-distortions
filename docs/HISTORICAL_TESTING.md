@@ -1,3 +1,5 @@
+> Historical development/recovery utilities for earlier rehearsal accounts. For the current single testnet build use README.md and managed-cloud.md. Do not deploy the old lab profile as the public weekly collection.
+
 # Test a previous week's data
 
 Current mapped runs use [renderer-4](RENDERER_V4.md): the art seed verifiably selects the family, AI supplies styling within that family, and frozen measurements drive expanded geometry, materials and motion. Existing renderer-1/2/3 editions retain their original verification paths. Use a fresh replay directory to regenerate an older capture with new rules.

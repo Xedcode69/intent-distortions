@@ -65,7 +65,7 @@ enum Key {
 #[ext_contract(ext_nft)]
 #[allow(dead_code)]
 trait NFT {
-    fn nft_token(&self, token_id: String) -> Option<Token>;
+    fn nft_token_compact(&self, token_id: String) -> Option<Token>;
     fn get_auction_candidate(&self, token_id: String) -> Option<Token>;
     fn nft_transfer(
         &mut self,
@@ -290,7 +290,7 @@ impl EchoAuction {
         let promise = if self.economy {
             query.get_auction_candidate(token_id.clone())
         } else {
-            query.nft_token(token_id.clone())
+            query.nft_token_compact(token_id.clone())
         };
         promise.then(
             ext_self::ext(env::current_account_id())
@@ -432,7 +432,7 @@ impl EchoAuction {
         let promise = if self.economy {
             query.get_auction_candidate(token_id.clone())
         } else {
-            query.nft_token(token_id.clone())
+            query.nft_token_compact(token_id.clone())
         };
         promise.then(
             ext_self::ext(env::current_account_id())
@@ -483,7 +483,7 @@ impl EchoAuction {
             }
             Some(None) => ext_nft::ext(self.nft_contract.clone())
                 .with_static_gas(Gas::from_tgas(15))
-                .nft_token(token_id.clone())
+                .nft_token_compact(token_id.clone())
                 .then(
                     ext_self::ext(env::current_account_id())
                         .with_static_gas(Gas::from_tgas(15))
@@ -761,7 +761,7 @@ impl EchoAuction {
         let token = self.latest_settled.clone().expect("No settled edition");
         ext_nft::ext(self.nft_contract.clone())
             .with_static_gas(Gas::from_tgas(15))
-            .nft_token(token.clone())
+            .nft_token_compact(token.clone())
             .then(
                 ext_self::ext(env::current_account_id())
                     .with_static_gas(Gas::from_tgas(15))

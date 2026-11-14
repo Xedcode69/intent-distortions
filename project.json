@@ -1,0 +1,81 @@
+{
+  "schema": "intent-distortions-project-v1",
+  "name": "Intent Distortions",
+  "category": "generative-art-and-nft-economy",
+  "problem": "Make real swap activity experiential while removing hosted-image dependence for collectible media.",
+  "source": {
+    "network": "mainnet",
+    "provider": "NEAR Intents Explorer",
+    "statuses": [
+      "SUCCESS"
+    ],
+    "time_field": "createdAtTimestamp",
+    "interval": "[start_ns,end_ns)"
+  },
+  "execution": {
+    "network": "testnet",
+    "mainnet_signing_supported": false,
+    "format": "intent-distortions-weekly-onchain-v1",
+    "recipe": "IDART1",
+    "ai": "NEAR AI Cloud artistic direction, persisted first-valid-v1",
+    "family": "seed-selected among six families",
+    "immutable_static_and_animated": true
+  },
+  "accounts": {
+    "operator": "id-operator.testnet",
+    "team": "id-team.testnet",
+    "treasury": "id-treasury.testnet",
+    "nft": "weekly-nft.id-operator.testnet",
+    "auction": "weekly-auction.id-operator.testnet",
+    "market": "weekly-market.id-operator.testnet"
+  },
+  "genesis": {
+    "contract": "art-v1.id-operator.testnet",
+    "token": "ONCHAIN-PROTOTYPE-000001",
+    "financial_rights": false,
+    "first_in_collection": true
+  },
+  "schedule": {
+    "timezone": "UTC",
+    "first_auction_release": "2026-11-15",
+    "next_initial_dates": [
+      "2026-11-15",
+      "2026-11-22",
+      "2026-11-29"
+    ],
+    "cadence": "weekly Sunday",
+    "beacon_hour": 18,
+    "normal_freeze_hour": 19,
+    "auction_duration_hours": 24
+  },
+  "economy": {
+    "treasury_bps": 2000,
+    "edition_account_bps": 8000,
+    "early_exit_bps_of_allocation": 4000,
+    "market_fee_bps": 500,
+    "monthly_winner": "contract-verified drand; permissionless submission",
+    "crosschain_checkout": false
+  },
+  "hosting": {
+    "frontend": "Vercel, root frontend/",
+    "backend": "Render, one combined API/worker with PostgreSQL and persistent disk",
+    "live_url": null
+  },
+  "commands": {
+    "setup": "uv sync --locked",
+    "local": "uv run --locked python scripts/prototype.py serve",
+    "deploy_plan": "uv run --locked python scripts/prototype.py plan",
+    "preflight": "uv run --locked python scripts/prototype_preflight.py --online",
+    "tests": "uv run --locked pytest backend/tests -q"
+  },
+  "judge_routes": [
+    "/gallery",
+    "/artwork/genesis",
+    "/drops",
+    "/marketplace",
+    "/my-collection",
+    "/economy",
+    "/demo"
+  ],
+  "deployment_status": "fresh_contracts_deployed_and_verified; hosting_and_worker_activation_pending"
+}

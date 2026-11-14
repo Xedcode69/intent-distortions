@@ -10,10 +10,11 @@ async def test_economy_preflight_checks_bindings_policy_and_embedded_code():
         near_creator_account="team.testnet",near_treasury_account="treasury.testnet",first_release_sunday="2026-11-15",expected_vault_code_hash="ab"*32)
     class RPC:
         bad=False
-        async def call(self,method,args):return {"chain_id":"testnet"}
+        async def call(self,method,args):return {"keys":[]} if method=="query" else {"chain_id":"testnet"}
         async def view(self,contract,method,args):
+            if method=="get_onchain_format":return "intent-distortions-weekly-onchain-v1"
             if method=="get_economy":return {"creator":"team.testnet","treasury":"treasury.testnet","vault_code_hash":("cd" if self.bad else "ab")*32,
-                "treasury_bps":2000,"vault_bps":8000,"early_exit_bps_of_vault":4000,"exited_ticket_reentry":False}
+                "treasury_bps":2000,"vault_bps":8000,"early_exit_bps_of_vault":4000,"exited_ticket_reentry":False,"first_auction_ns":"1794700800000000000"}
             if contract=="nft.testnet":return {"version":"echo-nft-3","minter":"worker.testnet","auction_contract":"auction.testnet","trait_schema":"echo-nft-traits-v1"}
             return {"version":"echo-auction-3","owner":"worker.testnet","nft_contract":"nft.testnet","creator":"team.testnet","duration_ns":str(86400*10**9),
                 "extension_ns":"0","splits":[2000,8000],"treasury_accounts":["treasury.testnet"]}

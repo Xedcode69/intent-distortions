@@ -6,16 +6,14 @@ export const dynamic = "force-dynamic";
 // Resolve private service discovery at runtime. No deployment secrets enter the browser bundle.
 async function proxy(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const { path } = await context.params;
-  const production = process.env.APP_PROFILE === "production";
   if (path.some(part => !/^[a-zA-Z0-9_.-]+$/.test(part) || part === "..") ||
-      (production && (path.includes("admin") || path.includes("demo")))) {
+      (path.includes("admin") || path.includes("demo"))) {
     return Response.json({ detail: "Not found" }, { status: 404 });
   }
   const backend = process.env.BACKEND_URL || "http://127.0.0.1:8000";
   const origin = backend.includes("://") ? backend : `http://${backend}`;
   const url = new URL(`/api/${path.join("/")}${request.nextUrl.search}`, origin);
   const headers = new Headers();
-  if (production) headers.set("host", "echoes-api.internal");
   for (const name of ["content-type", "origin"]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);

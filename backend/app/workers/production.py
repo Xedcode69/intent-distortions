@@ -82,7 +82,7 @@ class Worker:
             prior_epoch=db.get(Epoch,previous.epoch_id) if previous else None
         if number>1 and previous is None:
             self.state(number,"delayed","PreviousEditionPending");return
-        start_ns=int(prior_epoch.payload["end_ns"]) if prior_epoch else self.settings.genesis_checkpoint*10**9
+        start_ns=int(prior_epoch.payload["end_ns"]) if prior_epoch else int(self.settings.genesis_checkpoint_ns or self.settings.genesis_checkpoint*10**9)
         start=start_ns//10**9
         if "selection" not in r.payload:
             self.state(number,"selecting_checkpoint")
@@ -128,8 +128,14 @@ class Worker:
         self.state(number,"rendering")
         art=await run_epoch(self.factory,self.settings,number=number,mode="live",raw=[],sealed_records=records,start=start,end=end,
             start_ns=start_ns,end_ns=end_ns,block=block,beacon=r.payload["beacon"],selection=r.payload["selection"],source=source,
-            previous_hash=previous.image_hash if previous else GENESIS_HASH,evidence_rpc=self.rpc)
+            previous_hash=self.predecessor_hash(previous),evidence_rpc=self.rpc)
         self.state(number,"rendered")
+
+    def predecessor_hash(self,previous):
+        if previous is None:return self.settings.genesis_image_hash
+        if previous.payload.get("nft",{}).get("status")!="minted" or not previous.payload.get("onchain_art"):
+            raise ValueError("Previous onchain edition must be finalized first")
+        return previous.payload["onchain_art"]["static"]["sha256"]
 
     def state(self,number,state,error=None):
         with self.factory.begin() as db:
@@ -205,21 +211,22 @@ class Worker:
                     row=db.get(Artwork,art["id"]);row.payload={**row.payload,"auction":a}
                 if a["status"] in ("Settled","Unsold"):self.state(art["number"],"settled")
 
-async def main():
-    if settings.execution_mode!="live" or settings.service_role!="worker":raise SystemExit("Worker requires SERVICE_ROLE=worker and EXECUTION_MODE=live")
-    factory=init_db(create_schema=False)
+async def main(config=None,factory=None):
+    config=config or settings
+    if config.execution_mode!="live" or config.service_role not in ("worker","combined"):raise RuntimeError("Weekly worker requires live testnet execution")
+    factory=factory or init_db(create_schema=False)
     engine=factory.kw["bind"]
-    if engine.dialect.name!="postgresql":raise SystemExit("The durable live worker requires PostgreSQL")
+    if engine.dialect.name!="postgresql":raise RuntimeError("The durable live worker requires PostgreSQL")
     # Session-level lock survives commits and is released on crash/disconnect.
     with engine.connect() as lease:
-        if not lease.scalar(text("SELECT pg_try_advisory_lock(771862023)")):raise SystemExit("Another protocol worker owns the database lease")
+        if not lease.scalar(text("SELECT pg_try_advisory_lock(771862023)")):raise RuntimeError("Another protocol worker owns the database lease")
         lease.commit()
-        worker=Worker(factory,settings)
-        await validate_contracts(settings)
-        await validate_source_rpc(settings,worker.rpc)
+        worker=Worker(factory,config)
+        await validate_contracts(config)
+        await validate_source_rpc(config,worker.rpc)
         while True:
             if not lease.scalar(text("SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype='advisory' AND pid=pg_backend_pid() AND classid=0 AND objid=771862023 AND granted)")):
-                raise SystemExit("Worker no longer owns the database lease")
+                raise RuntimeError("Worker no longer owns the database lease")
             lease.commit()
             task=asyncio.create_task(worker.tick())
             try:
@@ -230,10 +237,14 @@ async def main():
                         lease.commit()
                     except Exception:
                         task.cancel()
-                        raise SystemExit("Worker database lease lost; stopping all work") from None
+                        raise RuntimeError("Worker database lease lost; stopping all work") from None
                 await task
             except Exception as exc:log.error("worker_tick_failed error_type=%s",type(exc).__name__)
-            await asyncio.sleep(settings.worker_poll_seconds)
+            finally:
+                # Never release the database lease while a child tick can still sign.
+                if not task.done():task.cancel()
+                await asyncio.gather(task,return_exceptions=True)
+            await asyncio.sleep(config.worker_poll_seconds)
 
 if __name__=="__main__":
     logging.basicConfig(level=logging.INFO,format="%(asctime)s %(levelname)s %(name)s %(message)s")

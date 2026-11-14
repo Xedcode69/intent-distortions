@@ -12,7 +12,10 @@ from app.services.storage import content_store
 parser=argparse.ArgumentParser()
 parser.add_argument("id",nargs="?",default="demo-000001")
 args=parser.parse_args()
-with init_db()() as db:
+if args.id.startswith("demo-"):
+    from fixture_profile import fixture_settings
+    settings=fixture_settings()
+with init_db(settings.database_url)() as db:
     row=db.get(Artwork,args.id)
     if not row: raise SystemExit("Edition not found: run scripts/run_demo_epoch.py first")
     result=verify_artwork(content_store(settings),row.payload,True)

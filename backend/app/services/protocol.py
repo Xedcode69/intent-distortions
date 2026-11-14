@@ -24,7 +24,10 @@ def policy(settings):
         "asset_mapping_policy":POLICY,"art_seed_policy":"registry-bound-v1",
         "canonical_schema":"echo-record-v1","odd_leaf_policy":"duplicate_last",
         "ai_policy":"first-valid-v1","ai_model":settings.near_ai_text_model,"allow_ai_fallback":settings.allow_ai_fallback,
-        "freeze_policy":"latest complete consistent observation finished before fixed freeze; no late observations"}
+        "freeze_policy":"latest complete consistent observation finished before fixed freeze; no late observations",
+        "artwork_format":"intent-distortions-weekly-onchain-v1","auction_from":"2026-11-15",
+        "genesis_image_hash":settings.genesis_image_hash,"genesis_checkpoint_ns":settings.genesis_checkpoint_ns,
+        "lineage_policy":"previous-frozen-onchain-svg-v1"}
 
 def ensure_protocol(factory,settings):
     value=policy(settings);commitment=sha(canonical(value)).hex()

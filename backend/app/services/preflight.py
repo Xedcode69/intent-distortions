@@ -29,6 +29,12 @@ async def validate_contracts(settings,rpc=None):
     if len(set(treasuries))!=(1 if settings.economy_enabled else 3) or settings.near_minter_account in treasuries or settings.near_auction_contract in treasuries or settings.near_nft_contract in treasuries:
         raise ValueError("Treasury withdrawal authority must be separate")
     if settings.economy_enabled:
+        if settings.execution_mode=="live" and await rpc.view(settings.near_nft_contract,"get_onchain_format",{})!="intent-distortions-weekly-onchain-v1":
+            raise ValueError("Fully onchain weekly NFT contract required")
+        for account in ((settings.near_nft_contract,settings.near_auction_contract,settings.near_market_contract) if settings.execution_mode=="live" else ()):
+            if not account:continue
+            keys=await rpc.call("query",{"request_type":"view_access_key_list","finality":"final","account_id":account})
+            if keys.get("keys")!=[]:raise ValueError("Weekly contracts must be keyless")
         if nft.get("trait_schema")!="echo-nft-traits-v1":raise ValueError("NFT contract must preserve root-level frozen trait metadata")
         economy=await rpc.view(settings.near_nft_contract,"get_economy",{})
         if economy.get("creator")!=settings.near_creator_account or economy.get("treasury")!=settings.near_treasury_account or auction.get("creator")!=settings.near_creator_account or treasuries!=[settings.near_treasury_account]:
@@ -37,6 +43,7 @@ async def validate_contracts(settings,rpc=None):
             raise ValueError("Embedded vault WASM hash mismatch")
         if economy.get("treasury_bps")!=2000 or economy.get("vault_bps")!=8000 or economy.get("early_exit_bps_of_vault")!=4000 or economy.get("exited_ticket_reentry") is not False:
             raise ValueError("Economy financial policy mismatch")
+        if settings.execution_mode=="live" and int(economy.get("first_auction_ns",0))!=1794700800*10**9:raise ValueError("Auctions must start November 15")
         if settings.first_release_sunday!="2026-11-15":raise ValueError("Economy schedule requires 2026-11-15")
     for account,expected in ((settings.near_nft_contract,settings.expected_nft_code_hash),(settings.near_auction_contract,settings.expected_auction_code_hash)):
         if expected:

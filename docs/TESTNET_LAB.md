@@ -1,3 +1,5 @@
+> Historical development/recovery utilities for earlier rehearsal accounts. For the current single testnet build use README.md and managed-cloud.md. Do not deploy the old lab profile as the public weekly collection.
+
 # Full testnet rehearsal
 
 This runs the same site and financial contracts as production, with separate

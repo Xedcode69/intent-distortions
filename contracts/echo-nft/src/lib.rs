@@ -19,6 +19,9 @@ mod economy;
 #[cfg(test)]
 mod economy_tests;
 mod royalty_owners;
+mod frozen_art;
+#[path = "../../onchain-art/src/renderer.rs"]
+mod renderer;
 use economy::{Economy, Edition};
 
 #[near_sdk::ext_contract(ext_economy_receiver)]
@@ -91,6 +94,7 @@ pub struct EchoNFT {
     economy: Option<Economy>,
     royalty_tokens: near_sdk::collections::Vector<String>,
     royalty_history: LookupMap<String, near_sdk::collections::Vector<royalty_owners::Checkpoint>>,
+    frozen_art: LookupMap<String, frozen_art::FrozenEdition>,
 }
 
 #[near]
@@ -125,6 +129,7 @@ impl EchoNFT {
             economy: None,
             royalty_tokens: near_sdk::collections::Vector::new(b"royalty_tokens".to_vec()),
             royalty_history: LookupMap::new(b"royalty_history".to_vec()),
+            frozen_art: LookupMap::new(b"frozen_art_v1".to_vec()),
         }
     }
 
@@ -152,7 +157,7 @@ impl EchoNFT {
         metadata: TokenMetadata,
         commitment: Commitment,
     ) -> Token {
-        assert!(self.economy.is_none(), "Use scheduled economy mint");
+        assert!(self.economy.is_none(), "Use sealed onchain economy mint");
         self.mint_impl(receiver_id, metadata, commitment, None)
     }
 
@@ -414,7 +419,7 @@ impl NonFungibleTokenCore for EchoNFT {
             .into()
     }
     fn nft_token(&self, token_id: TokenId) -> Option<Token> {
-        self.tokens.nft_token(token_id)
+        self.tokens.nft_token(token_id).map(|token| self.frozen_token(token))
     }
 }
 #[near]

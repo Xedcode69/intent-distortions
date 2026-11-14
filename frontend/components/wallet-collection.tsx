@@ -13,6 +13,14 @@ type Collection = {
   account_id:string; tokens:MarketToken[]; total:string|null; checked_at:number|null;
 };
 
+function GenesisHolding({account}:{account:string}){
+  const {data}=useQuery<{network:string;edition:{owner_id:string;token_id:string;metadata:{title:string}}}>({
+    queryKey:["genesis-holder",account],queryFn:()=>api("/onchain/prototype"),refetchInterval:30000,retry:1,
+  });
+  if(data?.network!=="testnet"||data.edition.owner_id!==account)return null;
+  return <div className="id-art-grid id-owned-grid"><Link href="/artwork/genesis" className="id-art-card"><div className="id-art-image"><img src="/api/v1/onchain/prototype/static.svg" alt={data.edition.metadata.title}/><span className="id-art-badge">Genesis · owned by you</span></div><div className="id-art-caption"><span>Onchain genesis</span><h2>{data.edition.metadata.title}</h2><div><strong>View artwork</strong><ArrowUpRight size={17}/></div></div></Link></div>;
+}
+
 function OwnedArtworks({account,network}:{account:string;network:string}){
   const [offset,setOffset]=useState(0),limit=20;
   const [selected,setSelected]=useState("");
@@ -38,6 +46,6 @@ function OwnedArtworks({account,network}:{account:string;network:string}){
 export function WalletCollection(){
   const wallet=useWallet();
   return <div className="page-container owned-page"><div className="page-title"><span className="eyebrow">YOUR INTENT DISTORTIONS</span><h1>A collection.<br/><em>Yours to keep.</em></h1><p>{wallet.account?wallet.account:"Connect your NEAR wallet to see your artworks."}</p></div>
-    {wallet.account&&wallet.network?<OwnedArtworks key={`${wallet.network}:${wallet.account}`} account={wallet.account} network={wallet.network}/>:<div className="empty-state"><Wallet size={30} strokeWidth={1}/><h2>Your distortions live here.</h2><p>Connect an account to view its Intent Distortions NFTs.</p><button className="button primary" disabled={!wallet.network||wallet.busy} onClick={()=>void wallet.connect()}>Connect wallet <ArrowUpRight size={15}/></button></div>}
+    {wallet.account&&wallet.network?<><GenesisHolding account={wallet.account}/><OwnedArtworks key={`${wallet.network}:${wallet.account}`} account={wallet.account} network={wallet.network}/></>:<div className="empty-state"><Wallet size={30} strokeWidth={1}/><h2>Your distortions live here.</h2><p>Connect an account to view its Intent Distortions NFTs.</p><button className="button primary" disabled={!wallet.network||wallet.busy} onClick={()=>void wallet.connect()}>Connect wallet <ArrowUpRight size={15}/></button></div>}
   </div>;
 }

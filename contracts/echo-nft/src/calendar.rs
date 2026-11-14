@@ -2,7 +2,7 @@
 pub const SECOND: u64 = 1_000_000_000;
 pub const DAY: u64 = 86400 * SECOND;
 pub const FIRST_EDITION: u64 = 1_794_700_800 * SECOND; // 2026-11-15 00:00 UTC
-pub const FIRST_AUCTION: u64 = FIRST_EDITION + 21 * DAY;
+pub const FIRST_AUCTION: u64 = FIRST_EDITION;
 
 pub fn civil(days: u64) -> (u32, u32, u32) {
     let z = days as i64 + 719468;
@@ -72,9 +72,9 @@ mod tests {
     #[test]
     fn dates_and_leap_years() {
         assert_eq!(civil(FIRST_EDITION / DAY), (2026, 11, 15));
-        assert_eq!(civil(FIRST_AUCTION / DAY), (2026, 12, 6));
+        assert_eq!(civil(FIRST_AUCTION / DAY), (2026, 11, 15));
         assert_eq!(civil(cutoff(202612) / DAY), (2027, 1, 1));
         assert_eq!(civil(cutoff(202802) / DAY), (2028, 3, 1));
-        assert_eq!(label(FIRST_AUCTION), "december2026-edition-1");
+        assert_eq!(label(FIRST_AUCTION), "november2026-edition-1");
     }
 }

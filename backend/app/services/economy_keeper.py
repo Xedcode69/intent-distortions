@@ -63,7 +63,12 @@ class EconomyKeeper:
             if d["wallet_status"]=="Uncreated":method="create_edition_wallet"
             elif d["wallet_status"] in ("Creating","Funding"):method="reconcile_wallet"
             elif d["wallet_status"]=="Ready" and d["cycle"] is not None:method="fund_edition_wallet"
-            if method:await self.act(nft,method,args,token)
+            if method:
+                deposit="0"
+                if method=="create_edition_wallet":
+                    state=await self.rpc.view(nft,"get_economy",{})
+                    deposit=state.get("wallet_startup_yocto","0")
+                await self.act(nft,method,args,token,deposit)
             if d["exited"]:await self.act(nft,"dispatch_exit",args,token)
             if d["collection_cycle"] is not None and not d["collected"]:await self.act(nft,"collect_edition",args,token)
         economy=await self.rpc.view(nft,"get_economy",{})
@@ -96,7 +101,7 @@ class EconomyKeeper:
         if now_ns>=cutoff:
             previous_cycle=(year-1)*100+12 if month==1 else cycle-1
             previous=next((m for m in months if m["cycle"]==previous_cycle),None)
-            if cycle==202612 or previous and previous["status"] in ("Drawn","Carried") and previous["pending_sources"]==0:
+            if cycle==202611 or previous and previous["status"] in ("Drawn","Carried") and previous["pending_sources"]==0:
                 # Wait for all vault funding and transfer resolutions, rather than
                 # consuming a known-failing transaction on every poll.
                 target=await self.rpc.view(nft,"get_month",{"cycle":cycle})

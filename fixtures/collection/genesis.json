@@ -1,0 +1,352 @@
+{
+  "ai_provider": "near_ai_cloud",
+  "composition": "crystalline",
+  "description": "A crystalline structure emerges from the convergence of high-volume network flows, rendered in translucent glass with a luminous gradient. The palette transitions from deep cosmic blue to soft starlight white, reflecting the dominance of Ethereum, Solana, and TRON in the data. Symmetrical nodes radiate outward, each representing a major hub, with routes visualized as glowing conduits of light. The composition balances complexity and clarity, capturing the rhythmic pulse of cross-chain activity through a celestial lens.",
+  "image_hash": "b870866d3f2eded46854edaf3f941ddd8f8bdf3d820ca5a413aa253893b2424b",
+  "merkle_root": "c1f7fec0e194e8bf23b63b7827fe0a58d25b5b1472949d841f3f897985960585",
+  "seed": "40ba2a81a8e39d2c820d740fa407fc38659f58e5c7eb913d437290f1baab0fa2",
+  "title": "Echo of the Hub",
+  "id": "genesis",
+  "edition": "ONCHAIN-PROTOTYPE-000001",
+  "number": 0,
+  "mode": "onchain_genesis",
+  "image": "/api/v1/onchain/prototype/static.svg",
+  "svg": "/api/v1/onchain/prototype/static.svg",
+  "thumbnail": "/api/v1/onchain/prototype/static.svg",
+  "palette": [
+    "#4A7AAB",
+    "#4D88B1",
+    "#8CB6D8",
+    "#9AD7DF",
+    "#89C0F0"
+  ],
+  "start": 1793491200,
+  "end": 1794097031,
+  "end_ns": "1794097030218994184",
+  "provenance": {
+    "uri": "/api/v1/onchain/prototype",
+    "sha256": "2839147a67384e9cb1ce73038e9e9cc9894a39c54e1813689e086a4641d07612"
+  },
+  "manifest": {
+    "uri": "/api/v1/onchain/prototype/recipe.bin",
+    "sha256": "0ba492658a79cbfb70ef2ecdb34cafec497f3c1a2f7e03d97fb7edf4521225ea"
+  },
+  "stats": {
+    "activity": [
+      2821,
+      6139,
+      6069,
+      3689,
+      4897,
+      1794,
+      5828,
+      4507,
+      7215,
+      6774,
+      3782,
+      5454,
+      8636,
+      4876,
+      4167,
+      7436,
+      7685,
+      4325,
+      5743,
+      7528,
+      5244,
+      4297,
+      5763,
+      5417
+    ],
+    "chains": {
+      "ADI": 1,
+      "ALEO": 61,
+      "Aptos": 191,
+      "Arbitrum": 5806,
+      "Avalanche": 482,
+      "BNB Chain": 5696,
+      "Base": 12326,
+      "Berachain": 32,
+      "Bitcoin": 9607,
+      "Bitcoin Cash": 265,
+      "Cardano": 166,
+      "Dash": 124,
+      "Dogecoin": 931,
+      "Ethereum": 35213,
+      "FOGO": 5,
+      "Gnosis": 410,
+      "HOOD": 857,
+      "HYPERCORE": 22,
+      "Litecoin": 2983,
+      "MIDEN": 5,
+      "Monad": 125,
+      "NEAR": 8392,
+      "Optimism": 518,
+      "PLASMA": 379,
+      "PRL": 15,
+      "Polygon": 1689,
+      "QTC": 14,
+      "Scroll": 83,
+      "Solana": 25104,
+      "Starknet": 9,
+      "Stellar": 149,
+      "Sui": 500,
+      "TON": 2041,
+      "TRON": 9865,
+      "Unmapped": 10,
+      "XLAYER": 77,
+      "XRP": 2556,
+      "Zcash": 3377
+    },
+    "dominant_routes": {
+      "Base \u00e2\u2020\u2019 Base": 4138,
+      "Ethereum \u00e2\u2020\u2019 Ethereum": 6919,
+      "Ethereum \u00e2\u2020\u2019 Solana": 6888,
+      "Ethereum \u00e2\u2020\u2019 TRON": 9714,
+      "Solana \u00e2\u2020\u2019 Base": 5960,
+      "Solana \u00e2\u2020\u2019 Solana": 7252
+    },
+    "network_mapping": {
+      "destination_records_mapped": 130076,
+      "observed_at": 1794569512,
+      "policy": "exact-registry-asset-id-v1",
+      "resolved_assets": 163,
+      "sha256": "696b7f47ce14a390190f1aabfc76a5eaa0841bd9fe7fcb3c56e5af2e8104dcf0",
+      "source_records_mapped": 130076,
+      "total_assets": 169,
+      "total_records": 130086,
+      "unresolved_assets": 6
+    },
+    "particle_count": 2400,
+    "public_volume_usd": "266682380.126633410314",
+    "total_swaps": 130086,
+    "unique_chains": 37,
+    "visual_features": {
+      "activity_profile": [
+        0.29002079,
+        0.2964657,
+        0.61081081,
+        0.66548857,
+        0.63783784,
+        0.62390852,
+        0.41767152,
+        0.34927235,
+        0.42182952,
+        0.5962578,
+        0.197921,
+        0.17505198,
+        0.71787942,
+        0.49376299,
+        0.42494802,
+        0.51205821,
+        0.71476091,
+        0.78523909,
+        0.797921,
+        0.61039501,
+        0.43513514,
+        0.35114345,
+        0.47962578,
+        0.65426195,
+        0.7954262,
+        1,
+        0.63492723,
+        0.37879418,
+        0.37380457,
+        0.49251559,
+        0.60790021,
+        0.93804574,
+        0.92099792,
+        0.67671518,
+        0.51912682,
+        0.38004158,
+        0.56985447,
+        0.62411642,
+        0.76340956,
+        0.8016632,
+        0.64636175,
+        0.44386694,
+        0.42598753,
+        0.46735967,
+        0.6037422,
+        0.59438669,
+        0.61164241,
+        0.51455301
+      ],
+      "asset_count": 169,
+      "asset_diversity": 0.62667174,
+      "burstiness": 0.24458559,
+      "community_count": 5,
+      "cross_network_share": 0.76781514,
+      "flow_imbalance": 0.18344787,
+      "hub_concentration": 0.27069016,
+      "median_usd": "52.304583966726",
+      "p90_usd": "2139.345007000000",
+      "quiet_share": 0,
+      "reciprocity": 0.64988687,
+      "record_count": 130086,
+      "rhythm_peaks": 9,
+      "route_count": 615,
+      "route_diversity": 0.67878496,
+      "size_inequality": 0.93352488,
+      "top_one_percent_volume_share": 0.53911391,
+      "version": "echo-visual-features-v1",
+      "volume_coverage": 130086
+    },
+    "volume_coverage": 130086
+  },
+  "block": {
+    "hash": "BDzW9G3dqqviKL41P6F33c7jzmx8viXvFRtAkLCUYeyR",
+    "height": 223539098,
+    "timestamp_ns": "1794097030218994184",
+    "verified": true
+  },
+  "nft": {
+    "status": "minted",
+    "token_id": "ONCHAIN-PROTOTYPE-000001",
+    "contract": "art-v1.id-operator.testnet",
+    "transaction_hash": "AGrn4ChzNKJNsGr25Gx6w2z3B35b87Hg9vZTPqR2PWoa"
+  },
+  "auction": {
+    "status": "Genesis",
+    "highest_bid": null
+  },
+  "traits": {
+    "attributes": [
+      {
+        "trait_type": "Art family",
+        "value": "Crystalline"
+      },
+      {
+        "trait_type": "Global edition",
+        "value": 1
+      },
+      {
+        "trait_type": "Renderer version",
+        "value": "echo-renderer-4"
+      },
+      {
+        "trait_type": "Contributing records",
+        "value": 130086
+      },
+      {
+        "trait_type": "Recognized source networks",
+        "value": 37
+      },
+      {
+        "trait_type": "Network routes",
+        "value": 615
+      },
+      {
+        "trait_type": "Symmetry",
+        "value": 8
+      },
+      {
+        "trait_type": "Image width",
+        "value": 1440
+      },
+      {
+        "trait_type": "Image height",
+        "value": 1440
+      },
+      {
+        "trait_type": "Material",
+        "value": "glass"
+      },
+      {
+        "trait_type": "Theme",
+        "value": "celestial"
+      },
+      {
+        "trait_type": "Complexity",
+        "value": 0.8
+      },
+      {
+        "trait_type": "Background",
+        "value": "Dark"
+      },
+      {
+        "trait_type": "Perspective",
+        "value": 0.221862
+      },
+      {
+        "trait_type": "Light intensity",
+        "value": 0.532002
+      },
+      {
+        "trait_type": "Texture density",
+        "value": 0.72
+      },
+      {
+        "trait_type": "Facet count",
+        "value": 17
+      },
+      {
+        "trait_type": "Growth direction (radians)",
+        "value": -0.994478
+      },
+      {
+        "trait_type": "Irregularity",
+        "value": 0.059134
+      },
+      {
+        "trait_type": "Subdivisions",
+        "value": 5
+      },
+      {
+        "trait_type": "Translucency",
+        "value": 0.56444
+      },
+      {
+        "trait_type": "Palette colour 1",
+        "value": "#4A7AAB"
+      },
+      {
+        "trait_type": "Palette colour 2",
+        "value": "#4D88B1"
+      },
+      {
+        "trait_type": "Palette colour 3",
+        "value": "#8CB6D8"
+      },
+      {
+        "trait_type": "Palette colour 4",
+        "value": "#9AD7DF"
+      },
+      {
+        "trait_type": "Palette colour 5",
+        "value": "#89C0F0"
+      },
+      {
+        "trait_type": "Distinct assets",
+        "value": 169
+      },
+      {
+        "trait_type": "Burstiness",
+        "value": 0.24458559
+      },
+      {
+        "trait_type": "Flow imbalance",
+        "value": 0.18344787
+      },
+      {
+        "trait_type": "Reciprocity",
+        "value": 0.64988687
+      },
+      {
+        "trait_type": "Route diversity",
+        "value": 0.67878496
+      }
+    ],
+    "description": "A crystalline structure emerges from the convergence of high-volume network flows, rendered in translucent glass with a luminous gradient. The palette transitions from deep cosmic blue to soft starlight white, reflecting the dominance of Ethereum, Solana, and TRON in the data. Symmetrical nodes radiate outward, each representing a major hub, with routes visualized as glowing conduits of light. The composition balances complexity and clarity, capturing the rhythmic pulse of cross-chain activity through a celestial lens.",
+    "name": "Echo of the Hub",
+    "schema": "echo-nft-traits-v1",
+    "sha256": "a9b51cf55b7927642730ccfdf2fa07ed6792b8d413f5b80651d9a93237ce666d",
+    "source": {
+      "image_sha256": "8fec6c77137badb4cd124b8235287eb36ab902ebbb0f27e6b78829dd47af8fca",
+      "manifest_sha256": "3db49bf25140a19d5789d724ad2c9c72e04bafbca1a3a440dae5e86dc057455c",
+      "merkle_root": "c1f7fec0e194e8bf23b63b7827fe0a58d25b5b1472949d841f3f897985960585",
+      "provenance_sha256": "2839147a67384e9cb1ce73038e9e9cc9894a39c54e1813689e086a4641d07612",
+      "seed": "40ba2a81a8e39d2c820d740fa407fc38659f58e5c7eb913d437290f1baab0fa2"
+    }
+  }
+}

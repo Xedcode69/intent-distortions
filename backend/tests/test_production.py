@@ -1,4 +1,3 @@
-import io
 from types import SimpleNamespace
 import pytest
 from sqlalchemy import create_engine,select
@@ -6,7 +5,6 @@ from sqlalchemy.orm import sessionmaker
 from app.config import Settings
 from app.database import Base,Effect,Observation,Swap
 from app.services.chain_writer import ChainWriter,OutcomeUnknown
-from app.services.storage import S3ContentStore
 from app.services.ingestion import persist_page
 from app.services.protocol import ensure_protocol
 from app.workers.production import choose_observation
@@ -92,23 +90,6 @@ async def test_ambiguous_chain_submission_never_resigns_or_reuses_nonce(factory)
     result=await writer.submit("mint-1","nft.testnet","mint_weekly_artwork",{"epoch":1})
     assert result["transaction_hash"]=="hash-1" and signer.signs==1
     assert rpc.broadcasts==["exact-signed-bytes"]
-
-class FakeS3:
-    def __init__(self):self.data={};self.puts=[]
-    def put_object(self,**request):
-        from botocore.exceptions import ClientError
-        self.puts.append(request)
-        if request["Key"] in self.data:raise ClientError({"Error":{"Code":"PreconditionFailed"}},"PutObject")
-        self.data[request["Key"]]=request["Body"]
-    def get_object(self,**request):return {"Body":io.BytesIO(self.data[request["Key"]])}
-
-def test_s3_write_once_checksums_and_readback():
-    client=FakeS3();store=S3ContentStore(Settings(_env_file=None,s3_bucket="test",artifact_public_url="https://art.example"),client)
-    data=b'{"public":"redacted"}';ref=store.put(data)
-    assert store.put(data)==ref and ref["uri"]==f'https://art.example/sha256/{sha(data).hex()}'
-    assert client.puts[0]["IfNoneMatch"]=="*" and client.puts[0]["ChecksumSHA256"]
-    client.data[f'sha256/{ref["sha256"]}']=b"corrupted"
-    with pytest.raises(ValueError,match="hash mismatch"):store.get(ref["sha256"])
 
 def test_compact_merkle_index_recovers_membership_for_odd_leaf_count():
     records=snapshot([raw(i,100+i) for i in range(101)],100,300)

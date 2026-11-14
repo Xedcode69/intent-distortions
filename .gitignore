@@ -1,9 +1,6 @@
 .env
 .env.*
 !.env.example
-!.env.demo.example
-!.env.production.example
-!.env.replay.example
 .env.*.local
 .vendor/
 .tools/

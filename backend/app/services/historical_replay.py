@@ -141,7 +141,7 @@ def isolated_settings(base, directory, ai):
                   data_dir=directory, database_url=f"sqlite:///{(directory/'replay.db').as_posix()}",
                   storage_provider="local_content_addressed", scheduler_enabled=False,
                   enable_chain_writes=False, mainnet_writes_approved=False, signer_key_file="",
-                  near_nft_contract="", near_auction_contract="", admin_token="", near_network="mainnet",
+                  near_nft_contract="", near_auction_contract="", admin_token="", near_network="testnet",
                   allow_ai_fallback=ai == "fallback")
     if ai == "fallback":
         values.update(near_ai_api_key="", near_ai_text_model="")

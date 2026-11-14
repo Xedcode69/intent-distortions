@@ -47,7 +47,7 @@ def preview_environment(directory, api_port, web_port):
                EXECUTION_MODE="historical_replay", DATABASE_URL=f"sqlite:///{(directory/'replay.db').as_posix()}",
                DATA_DIR=str(directory), STORAGE_PROVIDER="local_content_addressed", ENABLE_CHAIN_WRITES="false",
                MAINNET_WRITES_APPROVED="false", SCHEDULER_ENABLED="false", SERVICE_ROLE="api", ADMIN_TOKEN="",
-               NEAR_NFT_CONTRACT="", NEAR_AUCTION_CONTRACT="", NEAR_INTENTS_PARTNER_JWT="", NEAR_AI_API_KEY="", NEAR_NETWORK="mainnet",
+               NEAR_NFT_CONTRACT="", NEAR_AUCTION_CONTRACT="", NEAR_INTENTS_PARTNER_JWT="", NEAR_AI_API_KEY="", NEAR_NETWORK="testnet",
                SIGNER_KEY_FILE="", CORS_ORIGIN=f"http://127.0.0.1:{web_port}",
                PUBLIC_ORIGIN=f"http://127.0.0.1:{web_port}", BACKEND_URL=f"http://127.0.0.1:{api_port}",
                APP_PROFILE="replay", ECHOES_NEXT_DIST_DIR=".next-replay", NEXT_TELEMETRY_DISABLED="1")

@@ -16,6 +16,7 @@ def mark_drop_ownership(feed,snapshot,creator):
     if feed.get("active") and feed["active"].get("artwork"):arts.append(feed["active"]["artwork"])
     for art in arts:
         art["display_status"]=None
+        if art.get("delivery")=="genesis":continue
         item=items.get(art["edition"])
         if not item:continue
         nft=item["nft"];metadata=nft.get("metadata") or {}
@@ -27,7 +28,7 @@ def mark_drop_ownership(feed,snapshot,creator):
         if item.get("auction"):art["auction_status"]=item["auction"]["status"]
         try:
             release=int(json.loads(metadata.get("extra") or "{}")["release_ns"])//10**9
-            art.update(sunday=release,month=datetime.fromtimestamp(release,timezone.utc).strftime("%B %Y"),delivery="auction" if release>=1796515200 else "creator",auction_hours=24 if release>=1796515200 else None)
+            art.update(sunday=release,month=datetime.fromtimestamp(release,timezone.utc).strftime("%B %Y"),delivery="auction",auction_hours=24)
         except (ValueError,TypeError,KeyError):pass
     feed["chain_status"]="verified" if snapshot else "unavailable"
     return feed
@@ -39,13 +40,15 @@ def schedule(first,number,delay,release=None):
     return {"number":number,"edition":f"ECHO-{number:06d}","sunday":sunday,"beacon_at":sunday+18*3600,
         "window_start":sunday,"window_end":sunday+17*3600,
         "freeze_at":release.freeze_at if release else sunday+18*3600+delay,
-        "delivery":"creator" if sunday<1796515200 else "auction","auction_hours":None if sunday<1796515200 else 24,
+        "delivery":"auction","auction_hours":24,
         "month":date.strftime("%B %Y")}
 
 def artwork_summary(payload,details):
+    from .collection_art import present
+    payload=present(payload)
     return {**details,**{k:payload[k] for k in ("id","edition","number","mode","title","description","composition","image","thumbnail","image_hash","seed","start","end")},
         "records":payload["stats"]["total_swaps"],"source_networks":payload["stats"]["unique_chains"],
-        "nft_status":payload["nft"]["status"],"auction_status":payload["auction"]["status"]}
+        "nft_status":payload["nft"]["status"],"auction_status":payload["auction"]["status"],"onchain_art":payload.get("onchain_art")}
 
 def drop_feed(factory,settings,*,offset=0,limit=12,now=None):
     now=int(time.time()) if now is None else int(now)
@@ -102,5 +105,11 @@ def drop_feed(factory,settings,*,offset=0,limit=12,now=None):
                 sunday=db.scalar(select(Epoch.payload["selection"]["sunday_start"].as_integer()).where(Epoch.id==row.epoch_id))
                 info=schedule(int(sunday)-(row.payload["number"]-1)*WEEK if sunday is not None else first,row.payload["number"],settings.reconciliation_delay_seconds)
             previous.append(artwork_summary(row.payload,info))
+    from .collection_art import genesis
+    first_art=genesis(settings)
+    if first_art:
+        if offset<=total<offset+limit:
+            previous.append(artwork_summary(first_art,{"sunday":1794096000,"month":"November 2026","delivery":"genesis","auction_hours":None,"display_status":"reserved"}))
+        total+=1
     return {"mode":mode,"as_of":now,"schedule_timezone":"UTC","preview":not live,
         "upcoming":upcoming,"active":active,"previous":previous,"total_previous":total,"offset":offset,"limit":limit}
