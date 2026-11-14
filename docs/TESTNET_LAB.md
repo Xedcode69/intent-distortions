@@ -3,8 +3,10 @@
 This runs the same site and financial contracts as production, with separate
 testnet accounts and a test-only clock. No accounts, keys, deploys or mints are
 created by preparation. [Initial public testnet deployment is now verified](reports/testnet-deployment-2026-11-14.md):
-genesis is in the team wallet and the first synthetic auction is open. Start
-with the wallet acceptance steps below; fresh-workspace deployment instructions
+genesis is in the team wallet and the first synthetic auction has
+[settled with delivery and refunds](reports/testnet-auction-settlement-2026-11-14.md).
+The winning owner can now test marketplace and early-exit rights. Use the next
+fixture in the schedule below for another auction; fresh-workspace instructions
 remain available for reproducing the setup.
 
 The saved historical genesis keeps its image, seed, traits and provenance.
