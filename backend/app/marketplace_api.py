@@ -34,7 +34,7 @@ async def listings(offset:int=0,limit:int=20):
 
 @router.get("/collection")
 async def collection(offset:int=0,limit:int=20,search:str="",status:str="all",owner:str="",family:str="",sort:str="newest"):
-    from .services.collection_market import collection_snapshot,collection_page
+    from .services.collection_market import collection_page
     bounds(offset,limit)
     if len(search)>120 or len(family)>160 or status not in ("all","listed","unlisted","auction","sold","unsold") or sort not in ("newest","price"):
         raise HTTPException(422,"Invalid collection filter")
@@ -43,16 +43,21 @@ async def collection(offset:int=0,limit:int=20,search:str="",status:str="all",ow
         except ValueError:raise HTTPException(422,"Invalid owner") from None
     if not settings.near_market_contract:
         return {"items":[],"total":0,"stats":{"items":0,"listed":0,"on_auction":0,"sold":0,"unsold":0,"owners":0,"floor":None},"families":[],"block_height":None}
+    snapshot=await verified_collection()
+    return collection_page(snapshot,offset=offset,limit=limit,search=search,status=status,owner=owner,family=family,sort=sort)
+
+async def verified_collection(max_age=10):
+    from .services.collection_market import collection_snapshot
     await deployed()
     key=(settings.near_rpc_url,settings.near_market_contract,settings.near_nft_contract,settings.expected_nft_code_hash,settings.expected_market_code_hash,settings.near_auction_contract,settings.expected_auction_code_hash,settings.near_creator_account)
     async with _collection_lock:
         cached=_collection_cache.get(key)
-        if cached and cached[0]>time.monotonic():snapshot=cached[1]
+        if cached and cached[0]+max_age-10>time.monotonic():snapshot=cached[1]
         else:
             try:snapshot=await collection_snapshot(rpc(),settings)
             except Exception:raise HTTPException(503,"Collection could not be verified. Try again shortly.") from None
             _collection_cache.clear();_collection_cache[key]=(time.monotonic()+10,snapshot)
-    return collection_page(snapshot,offset=offset,limit=limit,search=search,status=status,owner=owner,family=family,sort=sort)
+    return snapshot
 
 @router.get("/offers")
 async def offers(offset:int=0,limit:int=20,token_id:str="",account_id:str="",scope:str="all"):

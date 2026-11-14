@@ -1,5 +1,6 @@
 """Public drop schedule and persisted progress, independent of auction duration."""
 import time
+import base64,json
 from datetime import datetime,timezone
 from sqlalchemy import select,func
 from ..database import Artwork,Epoch,Release,Job
@@ -7,6 +8,29 @@ from .testnet_profile import data_mode, data_modes
 
 WEEK=604800
 GENERATION_PHASES={"art_direction","rendering","preparing_files","ready"}
+
+def mark_drop_ownership(feed,snapshot,creator):
+    """Lifecycle badges use verified current ownership, never saved artwork labels."""
+    items={i["nft"]["token_id"]:i for i in snapshot["items"]} if snapshot else {}
+    arts=[*feed["previous"]]
+    if feed.get("active") and feed["active"].get("artwork"):arts.append(feed["active"]["artwork"])
+    for art in arts:
+        art["display_status"]=None
+        item=items.get(art["edition"])
+        if not item:continue
+        nft=item["nft"];metadata=nft.get("metadata") or {}
+        try:matches=metadata.get("media_hash")==base64.b64encode(bytes.fromhex(art["image_hash"])).decode()
+        except ValueError:matches=False
+        if not matches:continue
+        art["nft_status"]="minted";art["owner_id"]=nft["owner_id"]
+        art["display_status"]="reserved" if nft["owner_id"]==creator else "on_auction" if item["on_auction"] else "sold" if item["sold"] else None
+        if item.get("auction"):art["auction_status"]=item["auction"]["status"]
+        try:
+            release=int(json.loads(metadata.get("extra") or "{}")["release_ns"])//10**9
+            art.update(sunday=release,month=datetime.fromtimestamp(release,timezone.utc).strftime("%B %Y"),delivery="auction" if release>=1796515200 else "creator",auction_hours=24 if release>=1796515200 else None)
+        except (ValueError,TypeError,KeyError):pass
+    feed["chain_status"]="verified" if snapshot else "unavailable"
+    return feed
 
 def schedule(first,number,delay,release=None):
     sunday=first+(number-1)*WEEK

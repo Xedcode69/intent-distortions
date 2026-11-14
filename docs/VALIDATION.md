@@ -1,10 +1,12 @@
 # Release validation — 2026-11-12
 
-Latest public testnet auction evidence: [two no-bid returns to the team and two open bidding auctions](reports/testnet-four-auctions-2026-11-14.md). The market now displays verified on-auction/sold/no-bid states and filters. The isolated lab clock is frozen at January 3, 2027; monthly draws were not run.
+Latest interface update: [monthly Rewards totals, Drops ownership badges, transaction URLs and auction layout](reports/monthly-rewards-and-status-ui-2026-11-14.md). Backend: 210 passed, one PostgreSQL skip; JavaScript: 37 passed; production frontend build passed.
+
+Latest public testnet auction evidence: [both remaining winning auctions settled, NFTs delivered, vaults funded and treasury/refund verified](reports/testnet-two-auctions-settled-2026-11-14.md). The earlier [four-artwork rehearsal](reports/testnet-four-auctions-2026-11-14.md) verified two no-bid returns. The lab clock is now frozen at January 4, 2027; no auctions remain active and monthly draws were not run.
 
 Latest fix: [marketplace wallet RPC rate-limit mitigation](reports/market-rpc-rate-limit-2026-11-14.md). Interface/automation: [collection marketplace, owner controls and production maintenance](reports/collection-market-2026-11-14.md). Financial evidence: [completed public testnet auction, refunds and 20/80 allocation](reports/testnet-auction-settlement-2026-11-14.md). Bidding flow: [automatic registration](reports/automatic-bid-registration-2026-11-14.md). Deployment evidence: [public testnet deployment, initial mints and live recovery](reports/testnet-deployment-2026-11-14.md). Build pins and preparation evidence: [testnet lab](reports/testnet-lab-2026-11-14.md). Earlier interface evidence: [branding](reports/branding-2026-11-14.md), [original gallery redesign](reports/ui-redesign-2026-11-14.md) and [wallet connection and personal collection](reports/wallets-2026-11-14.md). Earlier reports below remain historical evidence.
 
-**Status: managed-cloud production candidate plus a separate educational demo. One public testnet auction completed with NFT delivery, full bid-principal refunds and verified 20/80 allocation. Marketplace/monthly-rewards acceptance, cloud rollout and independent review remain outstanding. No mainnet financial outcome is claimed.**
+**Status: managed-cloud production candidate plus a separate educational demo. Three public testnet auctions sold with verified NFT delivery and 20/80 allocation; two no-bid auctions returned their NFTs to the team. Bid-principal refund receipts were verified. Marketplace/monthly-rewards acceptance, cloud rollout and independent review remain outstanding. No mainnet financial outcome is claimed.**
 
 | Check | Observed result |
 |---|---|

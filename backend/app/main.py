@@ -54,6 +54,8 @@ from .marketplace_api import router as marketplace_router
 app.include_router(marketplace_router)
 from .wallet_api import router as wallet_router
 app.include_router(wallet_router)
+from .rewards_api import router as rewards_router
+app.include_router(rewards_router)
 if settings.app_env=="production":app.add_middleware(TrustedHostMiddleware,allowed_hosts=settings.allowed_hosts)
 
 @app.exception_handler(Exception)
@@ -193,13 +195,16 @@ def current():
 @app.get("/api/v1/drops")
 async def drops(offset:int=0,limit:int=12):
     if not 0<=offset<=100000 or not 1<=limit<=50:raise HTTPException(422,"Invalid drop pagination")
-    from .services.drops import drop_feed
-    now=None
-    if settings.execution_mode=="testnet_rehearsal":
-        from .services.testnet_lab import clock_status
-        state=await clock_status(settings)
-        if state.get("lab_clock_ns"): now=int(state["lab_clock_ns"])//10**9
-    return drop_feed(factory,settings,offset=offset,limit=limit,now=now)
+    from .services.drops import drop_feed,mark_drop_ownership
+    now=None;snapshot=None
+    if settings.near_market_contract:
+        from .marketplace_api import verified_collection
+        try:snapshot=await verified_collection(max_age=30)
+        except Exception:pass  # Never invent Reserved/Sold badges on a failed read.
+    if settings.execution_mode=="testnet_rehearsal" and snapshot:now=int(snapshot["as_of_ns"])//10**9
+    if settings.execution_mode=="testnet_rehearsal" and settings.near_market_contract and not snapshot:raise HTTPException(503,"Testnet drop state could not be verified. Try again shortly.")
+    feed=drop_feed(factory,settings,offset=offset,limit=limit,now=now)
+    return mark_drop_ownership(feed,snapshot,settings.near_creator_account)
 
 
 @app.get("/api/v1/replay/progress")

@@ -19,6 +19,9 @@ settlement and excludes pending funding. Sold means sold at primary auction,
 independently of whether its owner has subsequently listed it for resale.
 No-bid returns carry no funded raffle allocation. Active auction cards open the
 primary bidding page; secondary Buy/Offer controls apply to owner listings.
+On auction, Sold and Reserved lifecycle badges are shown on Drops' past
+artworks, where Reserved means current team ownership. Marketplace cards keep
+secondary listing/ownership labels and the existing status filters.
 
 Click an artwork in the market or **My collection** to see its image, traits,
 owner, offers and edition wallet. Owners can list/update a price, open to offers,

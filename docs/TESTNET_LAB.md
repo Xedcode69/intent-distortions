@@ -5,7 +5,7 @@ testnet accounts and a test-only clock. No accounts, keys, deploys or mints are
 created by preparation. [Initial public testnet deployment is now verified](reports/testnet-deployment-2026-11-14.md):
 genesis is in the team wallet and the first synthetic auction has
 [settled with delivery and refunds](reports/testnet-auction-settlement-2026-11-14.md).
-The current workspace has since completed the [four-artwork auction rehearsal](reports/testnet-four-auctions-2026-11-14.md): editions 5 and 6 returned to the team with no bids, while 7 and 8 remain open for bidding. Its clock is now frozen at January 3, 2027; earlier December listings and withdrawal windows have expired. Monthly draws were not run. The schedule below describes a fresh-workspace test sequence and must not be replayed by attempting to rewind this deployed lab.
+The current workspace has since completed the [four-artwork auction rehearsal](reports/testnet-four-auctions-2026-11-14.md) and [settled both remaining winning auctions](reports/testnet-two-auctions-settled-2026-11-14.md). Editions 5 and 6 returned to the team with no bids; editions 7 and 8 now belong to `idtester1.testnet`, with funded January allocations. Its clock is frozen at January 4, 2027; no auctions remain active. Earlier December listings and withdrawal windows have expired, and monthly draws were not run. The schedule below describes a fresh-workspace test sequence and must not be replayed by attempting to rewind this deployed lab.
 
 The saved historical genesis keeps its image, seed, traits and provenance.
 Five additional **synthetic** editions exercise auctions and monthly outcomes;

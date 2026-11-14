@@ -62,7 +62,7 @@ async def collection_snapshot(rpc, settings):
             "auction":auction,"on_auction":on_auction,"sold":sold,"unsold":unsold,
             "returned_to_team":unsold and token["owner_id"]==getattr(settings,"near_creator_account","")})
     prices = [int(i["listing"]["price"]) for i in items if i["listing"] and i["listing"]["price"]]
-    return {"items": items, "block_height": block["height"], "stats": {
+    return {"items": items, "block_height": block["height"],"as_of_ns":str(now_ns), "stats": {
         "items": len(items), "listed": sum(i["listing"] is not None for i in items),
         "on_auction":sum(i["on_auction"] for i in items),"sold":sum(i["sold"] for i in items),"unsold":sum(i["unsold"] for i in items),
         "owners": len({i["nft"]["owner_id"] for i in items}), "floor": str(min(prices)) if prices else None},
