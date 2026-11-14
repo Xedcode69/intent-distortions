@@ -1,5 +1,7 @@
 # Release validation — 2026-11-12
 
+Latest onchain-format evidence: [one immutable study minted to the team on public testnet](reports/onchain-art-prototype-2026-11-14.md). Keylessness, chain-only static/animated recovery, inline NFT metadata and actual edit/remint rejections passed. Python: 225 passed, one skip; JavaScript: 37 passed; 12 new Rust tests and production frontend build passed. The full-detail seal used approximately 297.6 Tgas; larger editions require optimization/staged validation in a new version before production rollout. This prototype does not change the weekly publisher or mainnet contracts.
+
 Latest interface update: [monthly Rewards totals, Drops ownership badges, transaction URLs and auction layout](reports/monthly-rewards-and-status-ui-2026-11-14.md). Backend: 210 passed, one PostgreSQL skip; JavaScript: 37 passed; production frontend build passed.
 
 Latest public testnet monthly evidence: [December and January paid, early-exited NFT excluded, February rollover verified](reports/testnet-monthly-draws-2026-11-14.md). Prizes of 1.2 and 0.88 NEAR were delivered with exact transfer receipts and balance deltas; February holds 0.624 NEAR and no eligible ticket. Both draws had one eligible entry, so live multi-entry randomness remains untested. The 30 current lab NFT native tests passed, including real-beacon multi-entry selection. The lab clock is frozen at February 1, 2027, 00:02 UTC.

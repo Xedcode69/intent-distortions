@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { ArrowDown, Check, Fingerprint, LoaderCircle } from "lucide-react";
 import { ReplayProgress } from "./replay-progress";
 import { AnimatedArtwork } from "./animated-artwork";
@@ -62,7 +63,7 @@ export function HistoricalDemo(){
     try{await Promise.all(Object.values(demo.files).map(asset=>verifiedBytes(asset)));if(demo.family_selection&&!await verifyFamilySelection(demo.artwork.seed,demo.artwork.composition,demo.family_selection))throw new Error("Family selection mismatch.");setVerification(demo.family_selection?"Image, scene and verifiable family draw match the published commitments.":"Image and scene SHA-256 match the published commitments.");}
     catch(reason){setVerification(reason instanceof Error?reason.message:"Verification failed.");}
   }
-  return <div className="page-container historical-demo"><div className="page-title"><span className="eyebrow">REAL ACTIVITY. ORIGINAL ART.</span><h1>A week,<br/><em>made visible.</em></h1><p>Explore a real historical run. Then see how it came to life.</p></div>
+  return <div className="page-container historical-demo"><div className="page-title"><span className="eyebrow">REAL ACTIVITY. ORIGINAL ART.</span><h1>A week,<br/><em>made visible.</em></h1><p>Explore a real historical run. Then see how it came to life.</p><Link href="/demo/onchain" className="button subtle">Explore the onchain study →</Link></div>
     <ReplayProgress compact/>
     {state==="loading"&&<div className="demo-placeholder" role="status"><LoaderCircle className="spin"/><p>Opening the artwork…</p></div>}
     {state==="empty"&&<div className="demo-placeholder"><Fingerprint size={35}/><h2>A new study is on its way.</h2><p>The historical artwork will appear when its replay is ready.</p></div>}

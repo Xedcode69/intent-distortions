@@ -1024,6 +1024,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "intent-onchain-art"
+version = "0.1.0"
+dependencies = [
+ "borsh",
+ "near-contract-standards",
+ "near-sdk",
+]
+
+[[package]]
 name = "itertools"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

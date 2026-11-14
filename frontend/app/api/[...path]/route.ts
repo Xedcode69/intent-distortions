@@ -40,7 +40,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
     const upstream = await fetch(url, { method: request.method, headers, body: body as BodyInit | undefined,
       signal: AbortSignal.timeout(30000), cache: "no-store", redirect: "manual" });
     const responseHeaders = new Headers({ "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
-    for (const name of ["content-type", "retry-after"]) {
+    for (const name of ["content-type", "retry-after", "content-security-policy", "content-disposition"]) {
       const value = upstream.headers.get(name); if (value) responseHeaders.set(name, value);
     }
     if (upstream.status >= 300 && upstream.status < 400) {

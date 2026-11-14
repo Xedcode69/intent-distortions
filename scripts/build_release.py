@@ -31,7 +31,7 @@ package("intent-distortions-demo.zip",demo,"static_educational_demo")
 files={}
 for folder in ["backend","frontend","signer","contracts","deploy","docs"]:
     for directory,dirs,names in os.walk(ROOT/folder):
-        dirs[:]=sorted(d for d in dirs if d not in EXCLUDED and not d.endswith(".egg-info"))
+        dirs[:]=sorted(d for d in dirs if d not in EXCLUDED and not d.startswith(".next-") and not d.endswith(".egg-info"))
         if folder=="contracts":dirs[:]=[d for d in dirs if d!="artifacts"]
         for name in sorted(names):
             if name.startswith(".env") or name.endswith((".pyc",".tsbuildinfo")) or (name.endswith(".test.mjs") and folder!="contracts") or name in ("AGENTS.md","next-env.d.ts"):continue
@@ -44,7 +44,7 @@ for name in ["render.yaml","pyproject.toml","uv.lock",".python-version",".docker
 blueprint=yaml.safe_load(files["render.yaml"])
 blueprint["services"]=[service for service in blueprint["services"] if service["name"]!="intent-distortions-explainer"]
 files["render.yaml"]=yaml.safe_dump(blueprint,sort_keys=False).encode()
-for name in ["production_preflight.py","verify_epoch.py","export_artwork.py","validate_deployment.py","test_historical_week.py","serve_replay.py","publish_replay_demo.py","build_contracts.py","test_economy_sandbox.ps1","testnet_rehearsal.py","serve_testnet.py"]:
+for name in ["production_preflight.py","verify_epoch.py","export_artwork.py","validate_deployment.py","test_historical_week.py","serve_replay.py","publish_replay_demo.py","build_contracts.py","build_onchain_art.py","prepare_onchain_art.py","onchain_art_testnet.py","test_economy_sandbox.ps1","testnet_rehearsal.py","serve_testnet.py"]:
     files[f"scripts/{name}"]=(ROOT/"scripts"/name).read_bytes()
 for name in ("verified-beacon.json", "transactions.json", "evidence.json"):
     files[f"fixtures/sample-epoch/{name}"]=(ROOT/f"fixtures/sample-epoch/{name}").read_bytes()
@@ -52,11 +52,20 @@ for name in ["echo_nft.wasm","echo_auction.wasm","echo_vault.wasm","echo_market.
     path=ROOT/"contracts/target/wasm32-unknown-unknown/release"/name
     if not path.exists():raise SystemExit("Build both current contract WASM artifacts before packaging")
     files[f"artifacts/{name}"]=path.read_bytes()
+onchain_files={}
+onchain_dir=ROOT/"contracts/artifacts/onchain-v1"
+if (onchain_dir/"build.json").is_file():
+    build=json.loads((onchain_dir/"build.json").read_bytes())
+    artifact=(onchain_dir/"intent_onchain_art.wasm").read_bytes()
+    if digest(artifact)!=build["sha256"] or len(artifact)!=build["bytes"]:raise SystemExit("Onchain study artifact differs from its reviewed build manifest")
+    onchain_files={"artifacts/onchain-v1/intent_onchain_art.wasm":artifact,"artifacts/onchain-v1/build.json":(onchain_dir/"build.json").read_bytes()}
+    files.update(onchain_files)
 files["README.md"]=b"# Intent Distortions managed-cloud release candidate\n\nRead docs/managed-cloud.md and docs/VALIDATION.md before deployment. Source, lockfiles, contract WASM candidates, environment template and deployment definitions are included. No credentials or runtime data are packaged. The educational demo is distributed separately; this archive's Render Blueprint contains only production services. This archive has not passed live credentialed acceptance or independent security review and is not mainnet-ready.\n"
 package("intent-distortions-managed-cloud.zip",files,"managed_cloud_source_and_wasm")
 
 # Never mix the clock-controlled binaries into the production artifact set.
 lab_files={name:data for name,data in files.items() if not name.startswith("artifacts/")}
+lab_files.update(onchain_files)
 for name in ("echo_nft.wasm","echo_auction.wasm","echo_vault.wasm","echo_market.wasm"):
     path=ROOT/"contracts/target/testnet-lab/wasm32-unknown-unknown/release"/name
     if not path.is_file():raise SystemExit("Build --testnet-lab before packaging the testnet release")

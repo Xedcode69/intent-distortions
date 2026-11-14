@@ -56,6 +56,8 @@ from .wallet_api import router as wallet_router
 app.include_router(wallet_router)
 from .rewards_api import router as rewards_router
 app.include_router(rewards_router)
+from .onchain_api import router as onchain_router
+app.include_router(onchain_router)
 if settings.app_env=="production":app.add_middleware(TrustedHostMiddleware,allowed_hosts=settings.allowed_hosts)
 
 @app.exception_handler(Exception)

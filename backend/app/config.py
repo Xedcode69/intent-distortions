@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     near_auction_contract: str = ""
     near_market_contract: str = ""
     expected_market_code_hash: str = ""
+    onchain_art_contract: str = ""
+    onchain_art_token_id: str = "ONCHAIN-PROTOTYPE-000001"
+    expected_onchain_art_code_hash: str = ""
     near_intents_1click_jwt: str = Field(default="",repr=False)
     marketplace_crosschain_enabled: bool = False
     near_intents_explorer_url: str = "https://explorer.near-intents.org/api/v0"

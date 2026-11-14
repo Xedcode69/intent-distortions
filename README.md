@@ -11,6 +11,11 @@ are verified](docs/reports/testnet-deployment-2026-11-14.md), and [one auction h
 settled with refunds and the 20/80 allocation](docs/reports/testnet-auction-settlement-2026-11-14.md).
 Marketplace and monthly-rewards acceptance remain in progress.
 
+The separate [immutable onchain-art study](docs/ONCHAIN_ART.md) adds a packed
+vector edition with static and animated SVG views recovered directly from NEAR.
+Its viewer is `/demo/onchain`; it reuses the saved genesis's accepted NEAR AI
+direction. [The first study is minted and verified on testnet](docs/reports/onchain-art-prototype-2026-11-14.md). See the runbook for isolated deployment, finality and recovery.
+
 The edition economy uses dedicated keyless NEAR accounts named `monthYEAR-edition-N.<nft-account>`, with monthly numbering. November 15/22/29, 2026 go to the creator; December 6 starts 24-hour auctions. Successful sales allocate 20% to treasury and 80% to the edition account. A one-time withdrawal pays 40% of that original allocation, excludes the edition from its funded draw and rolls the remainder forward. Monthly winners use contract-verified drand proofs. See [financial rules, building and deployment](docs/ECONOMY.md). `/economy` exposes contract state; `/demo` includes a separate simulated accounting explanation. This remains a release candidate pending credentialed testnet acceptance and independent review.
 
 The repository includes these application profiles and demonstrations:
