@@ -25,7 +25,7 @@ async def test_collection_snapshot_pins_every_page_to_one_block_and_orders_befor
             start=int(a.get("from_index",a.get("offset",0)))
             return {"result":list(json.dumps(rows[start:start+a["limit"]]).encode())}
     s=await collection_snapshot(RPC(),SimpleNamespace(near_nft_contract="nft.near",near_market_contract="market.near"))
-    assert s["stats"]=={"items":125,"listed":2,"owners":1,"floor":"100"}
+    assert s["stats"]=={"items":125,"listed":2,"owners":1,"floor":"100","on_auction":0,"sold":0,"unsold":0}
     p=collection_page(s,limit=1,sort="price");assert p["items"][0]["nft"]["token_id"]=="ECHO-000001"
     assert collection_page(s,offset=1,limit=1)["items"][0]["nft"]["token_id"]=="ECHO-000001"
     assert collection_page(s,status="listed")["total"]==2
@@ -78,3 +78,22 @@ async def test_duplicated_minted_tokens_are_rejected_instead_of_reporting_false_
             return {"result":list(json.dumps(value).encode())}
     with pytest.raises(ValueError,match="duplicated"):
         await collection_snapshot(RPC(),SimpleNamespace(near_nft_contract="nft.near",near_market_contract="market.near"))
+
+async def test_auction_and_sold_filters_require_verified_custody_deadline_and_settlement():
+    tokens=[token(1,"auction.near"),token(2,"winner.near"),token(3,"team.near"),token(4,"auction.near"),token(5,"auction.near"),token(6,"auction.near")]
+    auctions=[]
+    for i,status,end,bid,bidder,custody in [(1,"Active",200,"0",None,True),(2,"Settled",90,"100","winner.near",True),(3,"Unsold",90,"0",None,True),(4,"Active",100,"0",None,True),(5,"Active",200,"0",None,False),(6,"FundingPending",90,"100","winner.near",True)]:
+        auctions.append({"token_id":f"ECHO-{i:06d}","status":status,"end_ns":str(end),"highest_bid":bid,"highest_bidder":bidder,"custody_verified":custody})
+    class RPC:
+        async def block(self):return {"hash":"one-final-block","height":1,"timestamp_nanosec":"100"}
+        async def call(self,method,args):
+            assert args["block_id"]=="one-final-block"
+            if args["method_name"]=="get_auctions":
+                p=json.loads(base64.b64decode(args["args_base64"]));assert p=={"from_index":0,"limit":100}
+            value={"nft_total_supply":"6","nft_tokens":tokens,"get_listings":[],"get_config":{},"get_auctions":auctions}[args["method_name"]]
+            return {"result":list(json.dumps(value).encode())}
+    s=await collection_snapshot(RPC(),SimpleNamespace(near_nft_contract="nft.near",near_market_contract="market.near",near_auction_contract="auction.near",near_creator_account="team.near"))
+    assert s["stats"]["on_auction"]==s["stats"]["sold"]==s["stats"]["unsold"]==1
+    for status,expected in [("auction","ECHO-000001"),("sold","ECHO-000002"),("unsold","ECHO-000003")]:
+        p=collection_page(s,status=status);assert p["total"]==1 and p["items"][0]["nft"]["token_id"]==expected
+    assert collection_page(s,status="unsold")["items"][0]["returned_to_team"] is True

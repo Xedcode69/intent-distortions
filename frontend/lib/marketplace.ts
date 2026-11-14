@@ -2,9 +2,14 @@ export type MarketListing={token_id:string;seller:string;approval_id:number;nonc
 export type MarketOffer={id:string;token_id:string;seller:string;buyer:string;listing_nonce:string;amount:string;expires_ns:string;rights_hash:string};
 export type MarketConfig={status:string;contract:string;fee_bps:number;crosschain:boolean;next_royalty_close?:number};
 export type MarketToken={token_id:string;owner_id:string;approved_account_ids:Record<string,number>;metadata:{title?:string;media?:string;extra?:string}};
-export type MarketDetail={nft:MarketToken;wallet:import("./economy").EditionWallet;snapshot:{owner_id:string;rights_hash:string};listing:MarketListing|null};
-export type CollectionItem={nft:MarketToken;listing:MarketListing|null;family:string};
-export type CollectionMarket={items:CollectionItem[];total:number;stats:{items:number;listed:number;owners:number;floor:string|null};families:string[];block_height:number|null};
+export type PrimaryAuction={token_id:string;status:string;highest_bid:string;highest_bidder:string|null;min_bid:string;increment:string;end_ns:string;custody_verified:boolean};
+export type MarketDetail={nft:MarketToken;wallet:import("./economy").EditionWallet;snapshot:{owner_id:string;rights_hash:string};listing:MarketListing|null;auction?:PrimaryAuction|null};
+export type CollectionItem={nft:MarketToken;listing:MarketListing|null;family:string;auction:PrimaryAuction|null;on_auction:boolean;sold:boolean;unsold:boolean;returned_to_team:boolean};
+export type CollectionMarket={items:CollectionItem[];total:number;stats:{items:number;listed:number;on_auction:number;sold:number;unsold:number;owners:number;floor:string|null};families:string[];block_height:number|null};
+export function auctionArtworkId(token:MarketToken,mode:string){
+ try{const id=JSON.parse(token.metadata?.extra||"{}").testnet_rehearsal?.source_artwork;if(mode==="testnet_rehearsal"&&typeof id==="string"&&/^(demo|historical_replay)-\d{6}$/.test(id))return id;}catch{}
+ const match=/^ECHO-(\d{6})$/.exec(token.token_id);return match?`${mode==="testnet_rehearsal"?"demo":"live"}-${match[1]}`:null;
+}
 export type MarketBalance={storage_available:string;credit:string;withdrawing:string};
 export function activeListing(detail:MarketDetail,contract:string,now:number){
  const l=detail.listing;

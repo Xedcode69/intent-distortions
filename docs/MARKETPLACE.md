@@ -12,6 +12,14 @@ listings count as listed but do not set a floor. All snapshot queries use one
 finalized block and verify the enumerated NFT supply. The snapshot cache lasts
 ten seconds; action checks always read fresh contract state.
 
+The **On auction**, **Sold** and **No bids / returned** filters use the primary
+auction contract at that same finalized block. On auction requires verified
+custody and an unexpired bidding window; Sold requires completed positive-bid
+settlement and excludes pending funding. Sold means sold at primary auction,
+independently of whether its owner has subsequently listed it for resale.
+No-bid returns carry no funded raffle allocation. Active auction cards open the
+primary bidding page; secondary Buy/Offer controls apply to owner listings.
+
 Click an artwork in the market or **My collection** to see its image, traits,
 owner, offers and edition wallet. Owners can list/update a price, open to offers,
 cancel a listing, transfer or review an eligible early withdrawal there. The

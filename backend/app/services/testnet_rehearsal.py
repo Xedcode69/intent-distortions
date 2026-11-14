@@ -591,7 +591,7 @@ async def create_wallet(directory, rpc=None, runner=None, failed_tx=None):
             method = "create_edition_wallet" if state == "Uncreated" else "reconcile_wallet"
             args = {"token_id": plan["token_id"]}
             expected = {"signer": config.near_minter_account, "contract": config.near_nft_contract, "method": method, "args": args}
-            key = f'wallet:{result["wallet"]["creation_attempt"]}:{method}'
+            key = f'wallet:{plan["token_id"]}:{result["wallet"]["creation_attempt"]}:{method}'
             await _ack_failure(directory, key, r, failed_tx, expected)
             _run_cli(directory, key, _call_command(config.near_nft_contract, method, args, config.near_minter_account), expected, runner)
             result = await _minted(config, plan, r)

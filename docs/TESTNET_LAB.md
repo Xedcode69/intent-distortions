@@ -5,9 +5,7 @@ testnet accounts and a test-only clock. No accounts, keys, deploys or mints are
 created by preparation. [Initial public testnet deployment is now verified](reports/testnet-deployment-2026-11-14.md):
 genesis is in the team wallet and the first synthetic auction has
 [settled with delivery and refunds](reports/testnet-auction-settlement-2026-11-14.md).
-The winning owner can now test marketplace and early-exit rights. Use the next
-fixture in the schedule below for another auction; fresh-workspace instructions
-remain available for reproducing the setup.
+The current workspace has since completed the [four-artwork auction rehearsal](reports/testnet-four-auctions-2026-11-14.md): editions 5 and 6 returned to the team with no bids, while 7 and 8 remain open for bidding. Its clock is now frozen at January 3, 2027; earlier December listings and withdrawal windows have expired. Monthly draws were not run. The schedule below describes a fresh-workspace test sequence and must not be replayed by attempting to rewind this deployed lab.
 
 The saved historical genesis keeps its image, seed, traits and provenance.
 Five additional **synthetic** editions exercise auctions and monthly outcomes;
@@ -111,7 +109,7 @@ My collection, with frozen artwork traits and a keyless dedicated account.
 
 The clock is **frozen**, not a sped-up wall clock. Disconnect wallet actions while
 advancing it. All three time-sensitive contracts must agree before the site
-enables transactions; health refreshes every 15 seconds.
+enables transactions; health refreshes every 30 seconds.
 
 ```powershell
 uv run --locked python scripts/testnet_rehearsal.py advance data/testnet-rehearsals/full-lab --to 2026-12-06T00:00:00Z --send

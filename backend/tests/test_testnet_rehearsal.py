@@ -124,6 +124,17 @@ def public_client(directory, tamper=False):
         return httpx.Response(200,content=b"changed" if tamper else path.read_bytes())
     return httpx.AsyncClient(transport=httpx.MockTransport(handle))
 
+async def test_edition_wallet_journal_does_not_collide_with_an_earlier_edition(rehearsal):
+    directory,_=rehearsal;config=configure(directory);chain=Chain(directory,config)
+    plan=lab.save_plan(directory,"mint")
+    async with public_client(directory) as client:await lab.mint(directory,plan["sha256"],chain,client,chain.runner)
+    journal=lab._journal(directory)
+    # Previous versions used this same key for every edition's first attempt.
+    journal["wallet:0:create_edition_wallet"]={"status":"verified_onchain","expected":{"args":{"token_id":"ECHO-000000"}}}
+    lab.write_json(directory/"operator-journal.json",journal)
+    assert (await lab.create_wallet(directory,chain,chain.runner))["status"]=="wallet_verified"
+    assert lab._journal(directory)["wallet:ECHO-000001:0:create_edition_wallet"]["status"]=="verified_onchain"
+
 
 def test_preparation_copies_originals_and_exports_no_records(rehearsal):
     directory, source=rehearsal

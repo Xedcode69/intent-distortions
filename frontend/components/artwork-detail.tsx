@@ -1,11 +1,12 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
+import Link from "next/link";
 import {useQuery,useQueryClient} from "@tanstack/react-query";
 import {X,ArrowUpRight} from "lucide-react";
 import {api,financialNow,toYocto,useAPI,walletTransactionsEnabled,type Health} from "@/lib/api";
 import {contractAction,walletAccount} from "@/lib/wallet";
 import {duringWalletApproval} from "@/lib/wallet-activity";
-import {activeListing,tokenTraits,units,type MarketConfig,type MarketDetail,type MarketOffer,type MarketBalance} from "@/lib/marketplace";
+import {auctionArtworkId,activeListing,tokenTraits,units,type MarketConfig,type MarketDetail,type MarketOffer,type MarketBalance} from "@/lib/marketplace";
 import {submitPreparedMarketAction} from "@/lib/market-action";
 import {withdrawalState,monthLabel,type EditionWallet} from "@/lib/economy";
 import {useWallet} from "./wallet-provider";
@@ -25,6 +26,8 @@ export function ArtworkDetail({tokenId,onClose}:{tokenId:string;onClose:()=>void
  useEffect(()=>{setConfirmExit(false);},[account,tokenId,d?.snapshot.rights_hash]);
  const enabled=walletTransactionsEnabled(health)&&config?.status==="onchain"&&wallet.network===health?.network;
  const owner=!!account&&account===d?.nft.owner_id;
+ const primary=!!d?.auction&&d.nft.owner_id===health?.contracts.auction;
+ const auctionId=d?auctionArtworkId(d.nft,health?.mode||"live"):null;
  const active=!!d&&!!config&&activeListing(d,config.contract,financialNow(health));
  const exit=d?withdrawalState(d.wallet,d.nft.owner_id,account,financialNow(health)):null;
  async function refresh(){await cache.invalidateQueries();}
@@ -92,13 +95,16 @@ export function ArtworkDetail({tokenId,onClose}:{tokenId:string;onClose:()=>void
  <div className="id-detail-content"><span className="eyebrow">INTENT DISTORTIONS · {tokenId}</span><h2 id="artwork-title">{d.nft.metadata?.title||tokenId}</h2><p className="id-owner">{owner?"Owned by you":<>Owned by <span>{d.nft.owner_id}</span></>}</p>
  <div className="id-price-block"><small>{active?d.listing?.price?"Current price":"Open to offers":"Not listed"}</small><strong>{active&&d.listing?.price?`${units(d.listing.price,24)} NEAR`:"One of one"}</strong><span>5% of marketplace sales goes to eligible collection holders.</span></div>
  {!account&&<Button disabled={wallet.busy} onClick={()=>void wallet.connect()}>Connect wallet</Button>}
- {!owner&&<><div className="market-actions"><Button className="primary" disabled={!enabled||busy||!account||!active||!d.listing?.price} onClick={()=>void run(()=>trade("buy"))}>Buy artwork <ArrowUpRight size={16}/></Button></div>
+ {primary&&auctionId&&<div className="id-primary-auction"><p>{d.auction?.status==="Active"?"This artwork is in its primary auction.":`Primary auction: ${d.auction?.status}`}</p><Link className="button primary" href={`/auction/${auctionId}`}>View auction & bid <ArrowUpRight size={16}/></Link></div>}
+ {d.auction?.status==="Settled"&&<p>Primary auction sold for {units(d.auction.highest_bid,24)} NEAR.</p>}
+ {d.auction?.status==="Unsold"&&<p>No bids were placed. The primary auction returned this edition to the team.</p>}
+ {!owner&&!primary&&<><div className="market-actions"><Button className="primary" disabled={!enabled||busy||!account||!active||!d.listing?.price} onClick={()=>void run(()=>trade("buy"))}>Buy artwork <ArrowUpRight size={16}/></Button></div>
  <div className="id-offer-form"><label>Offer in NEAR<input inputMode="decimal" value={offer} onChange={e=>setOffer(e.target.value)} placeholder="Your offer"/></label><Button disabled={!enabled||busy||!account||!active||!offer} onClick={()=>void run(()=>trade("offer"))}>Place offer</Button></div><small>Offers are escrowed for up to 24 hours. The owner must list or open the artwork to offers first.</small></>}
  {owner&&<section className="id-owner-actions"><h3>Manage your artwork</h3><label>Listing price · NEAR<input inputMode="decimal" value={price} onChange={e=>setPrice(e.target.value)} placeholder="Leave blank to accept offers only"/></label><div className="market-actions"><Button className="primary" disabled={!enabled||busy||!!d.listing?.sale} onClick={()=>void run(()=>trade("list"))}>{active?"Update listing":price?"List artwork":"Open to offers"}</Button>{d.listing?.seller===account&&<Button disabled={!enabled||busy||!!d.listing.sale} onClick={()=>void run(cancelListing)}>Cancel listing</Button>}{!d.listing&&config&&d.nft.approved_account_ids[config.contract]!==undefined&&<Button disabled={!enabled||busy} onClick={()=>void run(()=>submit("nft_revoke",{token_id:tokenId,account_id:config.contract},"1",health!.contracts.nft))}>Revoke approval</Button>}</div></section>}
  <p className="id-microcopy">One button handles the required steps. Your wallet may request separate approvals. First use may add up to 0.02 NEAR for market storage; listing approval attaches 0.01 NEAR. Gas is separate.</p>
  {message&&<p className="id-action-message" role="status">{message}</p>}
  <section className="id-vault-panel"><div><h3>Edition wallet</h3><span>{d.wallet.exited?"Withdrawal used":d.wallet.collected?"Pooled":d.wallet.cycle?monthLabel(d.wallet.cycle):"Unfunded edition"}</span></div><strong>{units(d.wallet.remaining,24)} <small>NEAR remaining</small></strong><code>{d.wallet.account_id}</code>
- <p>These funds are separate from the artwork's sale price. {d.wallet.exited?"This artwork has left its funded month's draw. Its remainder rolls forward without a ticket.":d.wallet.collected?"This allocation has entered the monthly pot.":d.wallet.cycle?"Unused rights follow ownership until the UTC month-end cutoff.":"Creator editions have no primary-auction allocation."}</p>
+ <p>These funds are separate from the artwork's sale price. {d.wallet.exited?"This artwork has left its funded month's draw. Its remainder rolls forward without a ticket.":d.wallet.collected?"This allocation has entered the monthly pot.":d.wallet.cycle?"Unused rights follow ownership until the UTC month-end cutoff.":"This edition has no funded auction allocation yet."}</p>
  {owner&&exit?.eligible&&<>{!confirmExit?<Button disabled={!enabled||busy} onClick={()=>setConfirmExit(true)}>Early withdrawal · {units(exit.amount,24)} NEAR</Button>:<div className="id-exit-confirm"><h4>Leave this month's draw?</h4><p>You receive {units(exit.amount,24)} NEAR (40% of the original allocation). The remaining {units(exit.rollover,24)} NEAR rolls into next month's pot. This NFT loses its draw ticket. This choice cannot be undone.</p><div className="market-actions"><Button disabled={!enabled||busy} onClick={()=>void run(withdraw)}>Confirm withdrawal</Button><Button disabled={busy} onClick={()=>setConfirmExit(false)}>Keep my ticket</Button></div></div>}</>}
  {d.wallet.exited&&<p>Payment: {vault?.vault_state?.early?.status||"Checking vault delivery"} · {d.wallet.exit_beneficiary}{owner&&<Button disabled={!enabled||busy} onClick={()=>void run(()=>submit("dispatch_exit",{token_id:tokenId},"0",health!.contracts.nft))}>Check / retry delivery</Button>}</p>}
  </section>

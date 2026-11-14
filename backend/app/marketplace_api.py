@@ -36,15 +36,15 @@ async def listings(offset:int=0,limit:int=20):
 async def collection(offset:int=0,limit:int=20,search:str="",status:str="all",owner:str="",family:str="",sort:str="newest"):
     from .services.collection_market import collection_snapshot,collection_page
     bounds(offset,limit)
-    if len(search)>120 or len(family)>160 or status not in ("all","listed","unlisted") or sort not in ("newest","price"):
+    if len(search)>120 or len(family)>160 or status not in ("all","listed","unlisted","auction","sold","unsold") or sort not in ("newest","price"):
         raise HTTPException(422,"Invalid collection filter")
     if owner:
         try:account(owner)
         except ValueError:raise HTTPException(422,"Invalid owner") from None
     if not settings.near_market_contract:
-        return {"items":[],"total":0,"stats":{"items":0,"listed":0,"owners":0,"floor":None},"families":[],"block_height":None}
+        return {"items":[],"total":0,"stats":{"items":0,"listed":0,"on_auction":0,"sold":0,"unsold":0,"owners":0,"floor":None},"families":[],"block_height":None}
     await deployed()
-    key=(settings.near_rpc_url,settings.near_market_contract,settings.near_nft_contract,settings.expected_nft_code_hash,settings.expected_market_code_hash)
+    key=(settings.near_rpc_url,settings.near_market_contract,settings.near_nft_contract,settings.expected_nft_code_hash,settings.expected_market_code_hash,settings.near_auction_contract,settings.expected_auction_code_hash,settings.near_creator_account)
     async with _collection_lock:
         cached=_collection_cache.get(key)
         if cached and cached[0]>time.monotonic():snapshot=cached[1]
@@ -91,11 +91,12 @@ async def tokens(offset:int=0,limit:int=20):
 async def token(token_id:str):
     if len(token_id)>64:raise HTTPException(422,"Invalid token")
     await deployed();r=rpc()
-    nft,wallet,snapshot,listing=await asyncio.gather(r.view(settings.near_nft_contract,"nft_token",{"token_id":token_id}),
+    nft,wallet,snapshot,listing,auction=await asyncio.gather(r.view(settings.near_nft_contract,"nft_token",{"token_id":token_id}),
         r.view(settings.near_nft_contract,"get_edition_wallet",{"token_id":token_id}),r.view(settings.near_nft_contract,"get_market_snapshot",{"token_id":token_id}),
-        r.view(settings.near_market_contract,"get_listing",{"token_id":token_id}))
+        r.view(settings.near_market_contract,"get_listing",{"token_id":token_id}),
+        r.view(settings.near_auction_contract,"get_auction",{"token_id":token_id}))
     if nft is None:raise HTTPException(404,"NFT not found")
-    return {"nft":nft,"wallet":wallet,"snapshot":snapshot,"listing":listing}
+    return {"nft":nft,"wallet":wallet,"snapshot":snapshot,"listing":listing,"auction":auction}
 
 @router.get("/balances/{account_id}")
 async def balance(account_id:str):
