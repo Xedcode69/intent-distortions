@@ -26,6 +26,7 @@ def main():
     service=value["services"][0]
     assert service["type"]=="web" and service["numInstances"]==1
     assert service["disk"]["mountPath"]=="/app/data"
+    assert service["preDeployCommand"]=="/usr/local/bin/intent-migrate"
     env={item["key"]:item for item in service["envVars"]}
     assert env["SERVICE_ROLE"]["value"]=="combined"
     assert env["NEAR_NETWORK"]["value"]=="testnet"

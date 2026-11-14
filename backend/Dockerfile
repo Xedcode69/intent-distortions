@@ -27,6 +27,7 @@ COPY backend/alembic backend/alembic
 COPY backend/alembic.ini backend/alembic.ini
 COPY scripts scripts
 COPY fixtures/collection fixtures/collection
+RUN install -m 0755 scripts/migrate.py /usr/local/bin/intent-migrate
 RUN useradd -m echoes && mkdir -p /app/data && chown -R echoes:echoes /app
 USER echoes
 EXPOSE 8000

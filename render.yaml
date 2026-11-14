@@ -11,7 +11,7 @@ services:
   dockerfilePath: ./backend/Dockerfile
   dockerContext: .
   dockerCommand: /app/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-proxy-headers
-  preDeployCommand: /app/.venv/bin/alembic -c backend/alembic.ini upgrade head
+  preDeployCommand: /usr/local/bin/intent-migrate
   healthCheckPath: /readyz
   disk:
     name: weekly-source-archive
