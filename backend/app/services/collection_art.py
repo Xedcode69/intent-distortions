@@ -1,10 +1,10 @@
 """Public collection presentation; original source commitments remain unchanged."""
 import copy,json
-from pathlib import Path
+from ..config import ROOT
 
 def genesis(settings):
     if settings.execution_mode!="live" or not settings.onchain_art_contract:return None
-    value=json.loads((Path(__file__).resolve().parents[3]/"fixtures/collection/genesis.json").read_text())
+    value=json.loads((ROOT/"fixtures/collection/genesis.json").read_text(encoding="utf-8"))
     if value["nft"]["contract"]!=settings.onchain_art_contract or value["edition"]!=settings.onchain_art_token_id:
         raise ValueError("Genesis account must match the preserved edition")
     return value
