@@ -334,6 +334,12 @@ async def auction(id:str):
     if result is None: raise HTTPException(404)
     return result
 
+@app.get("/api/v1/auctions/bidders/{account_id}")
+async def auction_bidder(account_id:str):
+    from .services.auction_bidder import bidder_status
+    if not settings.near_auction_contract: raise HTTPException(404,"Auction contract is not configured")
+    return await bidder_status(settings,account_id)
+
 @app.get("/api/v1/auctions/{id}/bids")
 async def bids(id:str):
     await auction(id)

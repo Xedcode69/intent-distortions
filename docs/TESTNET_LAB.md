@@ -124,8 +124,10 @@ uv run --locked python scripts/testnet_rehearsal.py tick data/testnet-rehearsals
 Dependent receipt stages may need another pass. It never bids, buys, offers,
 chooses an exit or transfers a collector's NFT on their behalf.
 
-In `/gallery`, open edition 4's auction. Register collector A (0.01 NEAR storage),
-bid 1 NEAR; switch to B, register, bid at least 1.1 NEAR. Verify A's refund and
+In `/gallery`, open edition 4's auction. Collector A enters 1 NEAR and clicks
+**Place bid**. An unregistered wallet first approves the one-time 0.01 NEAR
+registration; after it confirms, the wallet approves the bid. Registered wallets
+need only the bid approval. Switch to B and bid at least 1.1 NEAR. Verify A's refund and
 reject an under-minimum bid. Advance to `2026-12-07T00:00:00Z`, then `tick` until
 the auction is Settled, the winner owns the NFT, the vault is Funded and treasury
 credit is paid. With 1.1 NEAR gross, treasury allocation is 0.22 and vault 0.88.

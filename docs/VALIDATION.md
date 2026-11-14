@@ -1,6 +1,6 @@
 # Release validation — 2026-11-12
 
-Latest update: [public testnet deployment, initial mints and live recovery](reports/testnet-deployment-2026-11-14.md). Build pins and preparation evidence: [testnet lab](reports/testnet-lab-2026-11-14.md). Earlier interface evidence: [branding](reports/branding-2026-11-14.md), [original gallery redesign](reports/ui-redesign-2026-11-14.md) and [wallet connection and personal collection](reports/wallets-2026-11-14.md). Earlier reports below remain historical evidence.
+Latest update: [one-button bidding with automatic registration](reports/automatic-bid-registration-2026-11-14.md). Deployment evidence: [public testnet deployment, initial mints and live recovery](reports/testnet-deployment-2026-11-14.md). Build pins and preparation evidence: [testnet lab](reports/testnet-lab-2026-11-14.md). Earlier interface evidence: [branding](reports/branding-2026-11-14.md), [original gallery redesign](reports/ui-redesign-2026-11-14.md) and [wallet connection and personal collection](reports/wallets-2026-11-14.md). Earlier reports below remain historical evidence.
 
 **Status: managed-cloud production candidate plus a separate educational demo. Testnet contracts and initial mints are deployed; full financial acceptance, cloud rollout and independent review remain outstanding. No mainnet financial outcome is claimed.**
 
