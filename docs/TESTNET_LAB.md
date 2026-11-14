@@ -141,11 +141,21 @@ cancellation and credit withdrawal. For expiry, advance the lab clock past the
 displayed deadline, then release expired records. Rights that change after an
 exit require refreshed listing/offer review. Transfers should update My collection.
 
+The collection header and listed-first grid use verified minted tokens, not the
+unminted fixture gallery. Use Filters, My items and the Offers tab to find artwork
+and made/received offers. Click any owned card in My collection to open its
+details, listing controls, traits and edition wallet. List/Buy/Place offer handle
+storage setup from the same button, with ordered wallet approvals when needed;
+cancelling the setup approval must stop the next transaction. Cancel listing also
+revokes marketplace approval after the cancellation confirms. Check both states.
+Early withdrawal appears only for the current owner of an eligible funded edition
+before cutoff and requires confirmation of the loss of its monthly draw ticket.
+
 Repeat the select → mint-plan → reviewed mint → tick sequence:
 
 | Fixture | Advance to before mint | Scenario |
 | --- | --- | --- |
-| `demo-000005` | 13 December 2026 | Sell at auction; owner uses the 40% early exit in Rewards |
+| `demo-000005` | 13 December 2026 | Sell at auction; click the artwork in My collection and use the 40% early exit |
 | `demo-000006` | 20 December 2026 | Sell at auction; keep this second eligible draw ticket |
 | `demo-000007` | 27 December 2026 | No bids; advance 24h and tick; team receives NFT, no funded ticket |
 | `demo-000008` | 3 January 2027 | Sell for January; tests next-month rollover with a new ticket |
@@ -157,7 +167,7 @@ must change the beneficiary; entitlement already fixed at cutoff must not move.
 
 ## 5. Monthly rewards and rollover
 
-Before December closes, use Rewards to withdraw edition 5's 40% allocation as
+Before December closes, click edition 5 in My collection to withdraw its 40% allocation as
 its current owner. Verify a second exit is rejected, its ticket is excluded and
 the remaining 60% of its vault is destined for January. The team-owned unfunded
 genesis and no-bid edition create no raffle tickets.

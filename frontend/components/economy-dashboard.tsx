@@ -1,6 +1,7 @@
 "use client";
-import {financialNow,walletTransactionsEnabled} from "@/lib/api";
+import {walletTransactionsEnabled} from "@/lib/api";
 import {useState} from "react";
+import Link from "next/link";
 import {useAPI,yocto,toYocto,type Health} from "@/lib/api";
 import {contractAction} from "@/lib/wallet";
 import {simulateEconomy,monthLabel,type Economy,type EditionWallet,type Month} from "@/lib/economy";
@@ -19,22 +20,14 @@ export function EconomyExample(){
  </section>;
 }
 
-function WalletCard({d,enabled,busy,onAction}:{d:EditionWallet;enabled:boolean;busy:boolean;onAction:(method:string,args:Record<string,unknown>,deposit?:string)=>Promise<void>}){
- const [recipient,setRecipient]=useState("");
+function WalletCard({d}:{d:EditionWallet}){
  const {data:detail}=useAPI<{current_owner:string|null;vault_state:{early:{status:string}|null;collection:{status:string}|null}|null}>(`/economy/wallets/${d.token_id}`);
- const {data:health}=useAPI<Health>("/health");
- const now=financialNow(health);const cycleEnd=d.cycle?Date.UTC(Math.floor(d.cycle/100)+(d.cycle%100===12?1:0),d.cycle%100===12?0:d.cycle%100,1):0;
- const canExit=enabled&&d.wallet_status==="Funded"&&!!d.cycle&&!d.exited&&!d.collected&&!d.transfer_pending&&now<cycleEnd;
  const exit=(BigInt(d.original)*2n/5n).toString();
  return <article className="edition-wallet"><div className="economy-row"><h3>{d.token_id}</h3><span className="pill">{d.exited?"EXIT USED":d.collected?"POOLED":d.cycle?"FUNDED":"UNFUNDED"}</span></div>
  <code className="economy-address">{d.account_id}</code><p>Account: {d.wallet_status}. {d.cycle?`Funded for ${monthLabel(d.cycle)}.`:"This edition has no funded raffle entry."}</p><p>Current NFT owner: {detail?.current_owner||"Reading contract…"}</p>
  <dl className="economy-balances"><div><dt>Original allocation</dt><dd>{yocto(d.original)} NEAR</dd></div><div><dt>Uncollected allocation</dt><dd>{yocto(d.remaining)} NEAR</dd></div><div><dt>Monthly beneficiary</dt><dd>{d.beneficiary}</dd></div></dl>
  {d.exited?<p>Withdrawal belongs to {d.exit_beneficiary}. Payment: {detail?.vault_state?.early?.status||"Awaiting vault registration"}. The remaining allocation funds a later pot and creates no new ticket.</p>:d.cycle?<p>One withdrawal pays {yocto(exit)} NEAR and removes this NFT from its funded cycle’s draw.</p>:null}
- <Button disabled={!canExit||busy} onClick={()=>onAction("withdraw_edition",{token_id:d.token_id},"1")}>Withdraw {yocto(exit)} NEAR · leave draw</Button>
- {d.exited&&<Button className="subtle" disabled={!enabled||busy} onClick={()=>onAction("dispatch_exit",{token_id:d.token_id})}>Check / retry withdrawal</Button>}
- <details><summary>Transfer this NFT</summary><p>Only the current owner can transfer. Unused rights follow the NFT before the cutoff; already fixed monthly entitlements stay with the recorded beneficiary.</p>
- <label className="bid-label">Recipient NEAR account<input value={recipient} onChange={e=>setRecipient(e.target.value)} placeholder="collector.near"/></label>
- <Button className="subtle" disabled={!enabled||busy||!recipient.trim()||d.transfer_pending} onClick={()=>onAction("nft_transfer",{receiver_id:recipient.trim(),token_id:d.token_id,approval_id:null,memo:null},"1")}>Authorize NFT transfer</Button></details>
+ <Link className="button subtle" href={`/marketplace?token=${encodeURIComponent(d.token_id)}`}>View artwork & owner controls</Link>
  </article>;
 }
 
@@ -58,7 +51,7 @@ export function EconomyDashboard(){
  <section className="economy-section"><div className="economy-row"><div><span className="eyebrow">ONCHAIN TREASURY</span><h2>{yocto(e.treasury_earned)} NEAR allocated</h2></div><span className="pill">20% OF SUCCESSFUL AUCTIONS</span></div><code className="economy-address">{e.treasury||"Treasury account pending deployment"}</code><p>Awaiting transfer: {yocto(e.treasury_credit)} NEAR. Gas and account storage are funded separately.</p></section>
 </details>
  <section className="economy-section"><span className="eyebrow">THE EDITION ACCOUNTS</span><h2>Art with something in it.</h2>
- {walletError?<p role="alert">Edition accounts could not be queried.</p>:wallets?.length?<div className="economy-wallet-grid">{wallets.map(d=><WalletCard key={d.token_id} d={d} enabled={!!enabled} busy={busy} onAction={action}/>)}</div>:<p>No edition accounts have been recorded on the configured contract.</p>}
+ {walletError?<p role="alert">Edition accounts could not be queried.</p>:wallets?.length?<div className="economy-wallet-grid">{wallets.map(d=><WalletCard key={d.token_id} d={d}/>)}</div>:<p>No edition accounts have been recorded on the configured contract.</p>}
  <div className="economy-pagination"><Button className="subtle" disabled={offset===0} onClick={()=>setOffset(Math.max(0,offset-50))}>Previous editions</Button><Button className="subtle" disabled={!wallets||wallets.length<50} onClick={()=>setOffset(offset+50)}>Next editions</Button></div></section>
  <section className="economy-section"><span className="eyebrow">MONTHLY DRAWS</span><h2>A new chapter, every month.</h2>
  {monthError?<p role="alert">Monthly pots could not be queried.</p>:months?.length?months.map(m=><article className="economy-month" key={m.cycle}><div className="economy-row"><h3>{monthLabel(m.cycle)}</h3><span className="pill">{m.status}</span></div><div className="economy-flow"><div><span>Unawarded pot</span><strong>{yocto(m.pot)}</strong><small>NEAR</small></div><div><span>Incoming rollover</span><strong>{yocto(m.rollover_received)}</strong><small>NEAR</small></div><div><span>Frozen tickets</span><strong>{m.entries.length}</strong><small>One per eligible NFT</small></div><div><span>Receipts received</span><strong>{m.received_receipts} / {m.expected_receipts}</strong><small>{m.pending_sources} source wallets pending</small></div></div>

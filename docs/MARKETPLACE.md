@@ -4,6 +4,38 @@
 
 ## Listings and offers
 
+The collection page shows collection totals and the lowest active fixed price,
+then a single artwork grid with valid listings first. Search, status, art-family
+and connected-owner filters apply to the complete finalized collection before
+pagination. Stats exclude expired/revoked listings and pending sales; offers-only
+listings count as listed but do not set a floor. All snapshot queries use one
+finalized block and verify the enumerated NFT supply. The snapshot cache lasts
+ten seconds; action checks always read fresh contract state.
+
+Click an artwork in the market or **My collection** to see its image, traits,
+owner, offers and edition wallet. Owners can list/update a price, open to offers,
+cancel a listing, transfer or review an eligible early withdrawal there. The
+withdrawal requires a separate confirmation explaining the exact 40% payment,
+60% rollover and loss of the funded month's draw ticket. Rewards remains the
+collection-wide financial overview.
+
+**One button runs required setup and the action in order.** List, Buy and Place
+offer first check current ownership, listing and financial rights, top up market
+storage when needed, then recheck before requesting the action. A wallet may
+still show two approvals. Cancelling setup stops the action; account/rights/price
+changes require fresh review. Cancellation removes the listing and then revokes
+approval from the same button. NFT approval itself creates the listing through
+its NEP-178 callback. An update reuses its existing record storage. As the current
+balance view does not distinguish an unused registration from an absent one,
+a zero-storage buy conservatively attaches 0.01 NEAR to setup; on an already
+registered account this becomes recoverable storage credit.
+
+Offers can be filtered across the complete offer set as made/received by the
+connected account. Offers require an active priced or offers-only listing.
+Cancelled offers and sale proceeds are withdrawn from Wallet & balances; these
+are separate choices from approval/setup, so they are not silently spent or
+withdrawn as part of another action.
+
 The owner registers storage on `echo-market`, then approves it through NEP-178 `nft_approve` with a price and expiry. A null price enables offers without a fixed-price purchase. Listings last at most 30 days (the UI uses seven). The NFT stays with its owner while listed, preserving its financial rights. Reapproval creates a new listing nonce. Only the fixed canonical NFT contract can create a listing callback; primary auction custody cannot list.
 
 Buyers register storage, then attach the exact listing price plus one yocto to `buy`. Offers escrow the offered amount plus one yocto, bind to the seller/listing nonce and expire no later than the listing (the UI caps them at 24 hours). The seller can accept an active offer. The buyer can cancel an unused offer at any time; anyone can release it after expiry. Unselected offers remain individually refundable after another sale or a listing cancellation; they are never consumed by that sale.

@@ -68,7 +68,7 @@ At Sunday 18:00 UTC the predetermined drand round is BLS-verified. Rejection sam
 
 Before the fixed freeze, each complete scan stores a redacted immutable snapshot and observation completion time. Sealing requires the **latest two** complete observations in the published age window to agree; an older preferred snapshot cannot bypass a newer disagreement. A scan completed after freeze is ineligible. Incomplete pagination, missing randomness/block evidence, disagreement or missing observations leaves a delayed release with no substitute mint. If provider statuses change at the very end of the interval, this policy may deliberately produce no edition. Explorer does not expose a signed as-of-freeze state: provider coverage and observation timestamps remain trusted inputs.
 
-After sealing, the worker persists the first valid AI direction, creates bounded renderer-v2 geometry, writes/checks artifacts, verifies public CDN bytes and mints exactly that edition into auction custody. AI fallback is disabled; unavailable/invalid direction has a published maximum of three attempts, then requires operator investigation without rerolling frozen inputs. Locked owner curation is read by its Sunday 17:00 UTC deadline; later settlements cannot overwrite historical choices.
+After sealing, the worker persists the first valid AI direction, creates the committed renderer's bounded geometry, writes/checks artifacts, verifies public CDN bytes and mints exactly that edition to its scheduled creator or auction receiver. AI fallback is disabled; unavailable/invalid direction has a published maximum of three attempts, then requires operator investigation without rerolling frozen inputs. Locked owner curation is read by its Sunday 17:00 UTC deadline; later settlements cannot overwrite historical choices.
 
 ## Operations and recovery
 
@@ -76,7 +76,7 @@ Observe Render process health/restarts and PostgreSQL capacity, `/readyz` for AP
 
 Every signing effect stores the exact signed bytes and hash **before** broadcast. Unknown outcomes block new nonce reservation. Startup/tick reconciliation queries final receipts and may rebroadcast the identical transaction; it never signs a replacement merely because of a timeout. Never delete an unknown effect to force progress. If an old transaction cannot be resolved, investigate authoritative RPC history/access-key nonce with an operator; automatic expiry-based replacement is intentionally absent.
 
-Auction status and balances come from finalized onchain views. Lost custody callbacks can be checked again with `retry_custody`; stale callbacks cannot restart the deadline. Lost settlement callbacks are reconciled against the NFT contract's durable auction-delivery record, which remains valid after the winner transfers the NFT onward. Treasury credit is idempotent. Confirmed failed transfers can retry from `RecoveryRequired`; automatic custody/transfer retries have a budget of three. Exhaustion requires investigation. No administrator method redirects escrow to an arbitrary beneficiary.
+Auction status and balances come from finalized onchain views. Lost custody callbacks can be checked again with `retry_custody`; stale callbacks cannot restart the deadline. Lost settlement callbacks are reconciled against the NFT contract's durable auction-delivery record, which remains valid after the winner transfers the NFT onward. Treasury credit is idempotent. Publication's automatic custody retries have a budget of three. The v3 economy keeper retries recoverable settlement/funding using five-minute idempotency buckets; persistent failures require operator investigation. No administrator method redirects escrow to an arbitrary beneficiary.
 
 Receipt indexing is idempotent and accepts only finalized outcomes from the configured contracts. It covers worker operations and wallet receipts submitted through the frontend. It is **not a complete network-wide history index**. Highest bids, refunds and balances remain authoritative onchain. For complete historical analytics commission a maintained block/indexer ingestion source and backfill validated receipts; do not present current partial history as complete. NEAR Lake is retired; use the current NEAR data-infrastructure guidance when selecting a replacement.
 
@@ -93,5 +93,39 @@ Enable managed PostgreSQL backups/PITR according to the selected plan and organi
 No item is considered complete merely because a configuration field is populated. No real confidential-swap coverage is claimed until authorized records and source evidence have actually been captured. Nothing in the educational demo proves live financial outcomes.
 
 For the optional [marketplace](MARKETPLACE.md), fund and initialize the separate `echo-market` account, then set its account ID and reviewed `EXPECTED_MARKET_CODE_HASH` in the protocol environment group. Deploy a fresh current NFT contract or review an explicit ownership-history migration first. The worker automatically prepares royalty snapshots and delivers fixed-beneficiary payments when enabled. Keep operating/storage reserves funded independently of fee liabilities. Only the API receives `NEAR_INTENTS_1CLICK_JWT` (Distribution Channel key); it must not reuse the worker's Explorer credential. Enable `MARKETPLACE_CROSSCHAIN_ENABLED` only after mainnet cross-chain acceptance. It defaults to false; no cross-chain deposits are accepted in testnet/replay.
+
+## Automatic operation and shared testnet fixes
+
+The production and testnet sites use the same market, wallet and auction UI
+source. The managed-cloud bundle now requests marketplace account/hash values
+instead of silently defaulting them to empty. Its worker remains a separate
+service: keep one leased instance running, mount the funded operator signer,
+pass online preflight, then explicitly configure chain writes for the intended
+network. The API alone does not generate, mint or settle editions. Mainnet writes
+remain disabled in the supplied template until the deployment is commissioned.
+Scheduled minting attaches up to 1 NEAR for measured metadata/commitment storage,
+matching the testnet workflow; surplus is refunded. Keep the NFT factory's
+separate edition-account code/storage reserve funded as well as the operator's
+gas/deposit balance. Prize liabilities never cover operating costs.
+
+The worker automatically selects the checkpoint, captures successful non-test
+Intents records, reconciles before freeze, generates/verifies/publishes artwork,
+mints the scheduled creator or auction edition, creates its dedicated account
+and opens the 24-hour auction after custody verification. The economy keeper
+settles ended auctions, retries recoverable deliveries/funding, processes losing
+bid refunds, funds edition wallets, delivers treasury allocations, closes monthly
+pots, submits the fixed-round draw proof and pays prizes/holder royalties.
+The production source RPC is verified as mainnet independently of the contract
+network. Explorer preflight omits the test-record flag entirely.
+
+Maintenance runs before generation and during long Explorer scans. Only capture
+runs concurrently; wallet signing stays serialized under the PostgreSQL lease.
+An unknown signed outcome stops further work until reconciliation of its exact
+bytes. The v3 keeper owns auction settlement; the legacy monitor no longer
+submits competing recovery calls in the same pass. Provider failures, missing
+consistent pre-freeze observations, insufficient operating reserves and unknown
+receipts still deliberately delay a release. Automation does not bypass these
+conditions or fabricate replacement art. Lab clock advancement and keeper ticks
+remain explicit operator commands; production has no clock controls.
 
 Provider references: [Render Blueprint specification](https://render.com/docs/blueprint-spec), [background workers](https://render.com/docs/background-workers), [AWS Object Lock bucket configuration](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-s3-bucket.html), [S3 conditional-write enforcement](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes-enforce.html), [NEAR transaction RPC](https://docs.near.org/api/rpc/transactions), [Explorer transaction API](https://docs.near-intents.org/api-reference/get-transactions).

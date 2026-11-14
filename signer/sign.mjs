@@ -24,7 +24,8 @@ export async function execute(request,env=process.env){
   const deposit=BigInt(request.deposit),gas=BigInt(request.gas);
   if(request.method==="pay_royalty") {if(deposit!==1n)throw new Error("Royalty delivery requires one yocto");}
   else if(!["mint_weekly_artwork","mint_scheduled_artwork","create_auction"].includes(request.method)&&deposit!==0n)throw new Error("Maintenance calls require zero deposit");
-  if(deposit<0n||deposit>100000000000000000000000n||gas<1n||gas>200000000000000n)throw new Error("Signing limits exceeded");
+  const maxDeposit=request.method==="mint_scheduled_artwork"?1000000000000000000000000n:100000000000000000000000n;
+  if(deposit<0n||deposit>maxDeposit||gas<1n||gas>200000000000000n)throw new Error("Signing limits exceeded");
   const transaction=createTransaction(request.account_id,key.getPublicKey(),request.receiver_id,BigInt(request.nonce),
     [actionCreators.functionCall(request.method,request.args,gas,deposit)],base58.decode(request.block_hash));
   const hash=createHash("sha256").update(transaction.encode()).digest();

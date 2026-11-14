@@ -9,6 +9,8 @@ from .services.marketplace import validate_market,OneClick,account,checkout_amou
 router=APIRouter(prefix="/api/v1/marketplace")
 _validated={}
 _validation_lock=asyncio.Lock()
+_collection_cache={}
+_collection_lock=asyncio.Lock()
 def rpc():return NearRPC(settings.near_rpc_url)
 async def deployed(fresh=False):
     if not settings.near_market_contract:raise HTTPException(409,"Marketplace is not deployed")
@@ -30,11 +32,51 @@ async def listings(offset:int=0,limit:int=20):
     if not settings.near_market_contract:return []
     await deployed();return await rpc().view(settings.near_market_contract,"get_listings",{"offset":offset,"limit":limit})
 
+@router.get("/collection")
+async def collection(offset:int=0,limit:int=20,search:str="",status:str="all",owner:str="",family:str="",sort:str="newest"):
+    from .services.collection_market import collection_snapshot,collection_page
+    bounds(offset,limit)
+    if len(search)>120 or len(family)>160 or status not in ("all","listed","unlisted") or sort not in ("newest","price"):
+        raise HTTPException(422,"Invalid collection filter")
+    if owner:
+        try:account(owner)
+        except ValueError:raise HTTPException(422,"Invalid owner") from None
+    if not settings.near_market_contract:
+        return {"items":[],"total":0,"stats":{"items":0,"listed":0,"owners":0,"floor":None},"families":[],"block_height":None}
+    await deployed()
+    key=(settings.near_rpc_url,settings.near_market_contract,settings.near_nft_contract,settings.expected_nft_code_hash,settings.expected_market_code_hash)
+    async with _collection_lock:
+        cached=_collection_cache.get(key)
+        if cached and cached[0]>time.monotonic():snapshot=cached[1]
+        else:
+            try:snapshot=await collection_snapshot(rpc(),settings)
+            except Exception:raise HTTPException(503,"Collection could not be verified. Try again shortly.") from None
+            _collection_cache.clear();_collection_cache[key]=(time.monotonic()+10,snapshot)
+    return collection_page(snapshot,offset=offset,limit=limit,search=search,status=status,owner=owner,family=family,sort=sort)
+
 @router.get("/offers")
-async def offers(offset:int=0,limit:int=20):
+async def offers(offset:int=0,limit:int=20,token_id:str="",account_id:str="",scope:str="all"):
     bounds(offset,limit)
     if not settings.near_market_contract:return []
-    await deployed();return await rpc().view(settings.near_market_contract,"get_offers",{"offset":offset,"limit":limit})
+    if len(token_id)>64 or scope not in ("all","made","received"):raise HTTPException(422,"Invalid offer filter")
+    if account_id:
+        try:account(account_id)
+        except ValueError:raise HTTPException(422,"Invalid account") from None
+    if scope!="all" and not account_id:raise HTTPException(422,"Connect an account to filter offers")
+    await deployed();r=rpc()
+    if not token_id and scope=="all":return await r.view(settings.near_market_contract,"get_offers",{"offset":offset,"limit":limit})
+    # Filter the complete offer set before paginating, including older offers.
+    block=await r.block();rows=[]
+    import base64,json
+    for start in range(0,10100,100):
+        result=await r.call("query",{"request_type":"call_function","block_id":block["hash"],"account_id":settings.near_market_contract,
+            "method_name":"get_offers","args_base64":base64.b64encode(json.dumps({"offset":start,"limit":100}).encode()).decode()})
+        page=json.loads(bytes(result["result"]))
+        if not isinstance(page,list) or len(page)>100 or len(rows)+len(page)>10000:raise HTTPException(503,"Offer collection exceeds query capacity")
+        rows.extend(page)
+        if len(page)<100:break
+    rows=[o for o in rows if (not token_id or o["token_id"]==token_id) and (scope=="all" or o["buyer" if scope=="made" else "seller"]==account_id)]
+    return rows[offset:offset+limit]
 
 def bounds(offset,limit):
     if not 0<=offset<=100000 or not 1<=limit<=50:raise HTTPException(422,"Invalid pagination")

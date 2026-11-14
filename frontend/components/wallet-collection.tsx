@@ -6,6 +6,7 @@ import {ArrowUpRight,RefreshCw,Wallet} from "lucide-react";
 import {api} from "@/lib/api";
 import type {MarketToken} from "@/lib/marketplace";
 import {useWallet} from "./wallet-provider";
+import {ArtworkDetail} from "./artwork-detail";
 
 type Collection = {
   status:"onchain"|"not_deployed"; network:string; contract:string;
@@ -14,6 +15,7 @@ type Collection = {
 
 function OwnedArtworks({account,network}:{account:string;network:string}){
   const [offset,setOffset]=useState(0),limit=20;
+  const [selected,setSelected]=useState("");
   const {data,error,isFetching,refetch}=useQuery<Collection>({
     queryKey:["wallet-collection",network,account,offset],
     queryFn:()=>api(`/wallets/${encodeURIComponent(account)}/collection?offset=${offset}&limit=${limit}`),
@@ -25,10 +27,12 @@ function OwnedArtworks({account,network}:{account:string;network:string}){
   // Refuse ownership claims if the backend response does not match this wallet.
   if(data.account_id!==account||data.network!==network)return <p role="alert">The collection response does not match your wallet network.</p>;
   return <><div className="owned-toolbar"><div><strong>{data.total}</strong><span> {data.total==="1"?"artwork":"artworks"} owned</span></div><button className="button subtle" disabled={isFetching} onClick={()=>void refetch()}><RefreshCw size={14} className={isFetching?"spin":""}/>Refresh</button></div>
-    <div className="gallery-grid owned-grid">{data.tokens.map(token=><article key={token.token_id} className="art-card"><Link href={`/marketplace?token=${encodeURIComponent(token.token_id)}`} className="card-image">{token.metadata?.media?<img src={token.metadata.media} alt={token.metadata.title||token.token_id} loading="lazy"/>:<span className="owned-no-image">INTENT DISTORTIONS</span>}<span className="card-badge">OWNED ON CHAIN</span><span className="card-arrow"><ArrowUpRight size={21}/></span></Link><div className="card-caption"><span className="overline">{token.token_id}</span><h3>{token.metadata?.title||token.token_id}</h3><Link href={`/marketplace?token=${encodeURIComponent(token.token_id)}`} className="text-link">View in market <ArrowUpRight size={14}/></Link></div></article>)}</div>
+    <div className="id-art-grid id-owned-grid">{data.tokens.map(token=><button key={token.token_id} className="id-art-card" onClick={()=>setSelected(token.token_id)}><div className="id-art-image">{token.metadata?.media?<img src={token.metadata.media} alt={token.metadata.title||token.token_id} loading="lazy"/>:<span>INTENT DISTORTIONS</span>}<span className="id-art-badge">Owned by you</span></div><div className="id-art-caption"><span>{token.token_id}</span><h2>{token.metadata?.title||token.token_id}</h2><div><strong>Details & edition wallet</strong><ArrowUpRight size={17}/></div></div></button>)}</div>
     {!data.tokens.length&&<div className="empty-state"><h2>{offset?"No artworks on this page.":"Your next distortion awaits."}</h2><p>{offset?"Ownership may have changed. Return to the first page or refresh.":"This wallet holds no NFTs from the configured Intent Distortions collection."}</p><Link href="/marketplace" className="button primary">Explore the market <ArrowUpRight size={15}/></Link></div>}
     {(offset>0||BigInt(data.total||"0")>BigInt(limit))&&<div className="owned-pagination"><button className="button subtle" disabled={offset===0||isFetching} onClick={()=>setOffset(Math.max(0,offset-limit))}>Previous</button><button className="button subtle" disabled={BigInt(offset+limit)>=BigInt(data.total||"0")||isFetching} onClick={()=>setOffset(offset+limit)}>Next</button></div>}
-    <p className="demo-note">{data.network} · {data.contract} · Checked {new Date((data.checked_at||0)*1000).toLocaleTimeString()}. Ownership refreshes every 15 seconds.</p></>;
+    <p className="demo-note id-collection-footnote">{data.network} · {data.contract} · Checked {new Date((data.checked_at||0)*1000).toLocaleTimeString()}. Ownership refreshes every 15 seconds.</p>
+    {selected&&<ArtworkDetail key={selected} tokenId={selected} onClose={()=>setSelected("")}/>}
+    </>;
 }
 
 export function WalletCollection(){

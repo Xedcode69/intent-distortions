@@ -25,10 +25,9 @@ async def check(online):
         first=db.scalar(select(Epoch.id).where(Epoch.mode=="live").limit(1))
     if not first and value["first_sunday"]+18*3600+settings.reconciliation_delay_seconds<=time.time():
         raise ValueError("Initial freeze has passed without a recorded release; recover its frozen observations or review a new launch policy")
-    from app.services.preflight import validate_contracts
+    from app.services.preflight import validate_contracts,validate_source_rpc
     report["chain"]=await validate_contracts(settings)
-    from app.services.near_rpc import NearRPC
-    if (await NearRPC(settings.near_mainnet_rpc_url).call("status",{}))["chain_id"]!="mainnet":raise ValueError("Source block RPC must be mainnet")
+    await validate_source_rpc(settings)
     from app.services.storage import content_store
     store=content_store(settings)
     versioning=store.client.get_bucket_versioning(Bucket=settings.s3_bucket)
@@ -41,7 +40,7 @@ async def check(online):
     if settings.service_role=="worker":
         import httpx
         async with httpx.AsyncClient(timeout=30) as client:
-            explorer=await client.get(settings.near_intents_explorer_url+"/transactions",params={"numberOfTransactions":1,"direction":"prev","statuses":"SUCCESS","showTestTxs":"false"},headers={"Authorization":f"Bearer {settings.near_intents_partner_jwt}"})
+            explorer=await client.get(settings.near_intents_explorer_url+"/transactions",params={"numberOfTransactions":1,"direction":"prev","statuses":"SUCCESS"},headers={"Authorization":f"Bearer {settings.near_intents_partner_jwt}"})
             explorer.raise_for_status()
             if not isinstance(explorer.json(),list):raise ValueError("Explorer response schema mismatch")
             models=await client.get(settings.near_ai_base_url+"/models",headers={"Authorization":f"Bearer {settings.near_ai_api_key}"})

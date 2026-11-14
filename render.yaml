@@ -44,9 +44,9 @@ envVarGroups:
       - key: NEAR_AUCTION_CONTRACT
         sync: false
       - key: NEAR_MARKET_CONTRACT
-        value: ""
+        sync: false
       - key: EXPECTED_MARKET_CODE_HASH
-        value: ""
+        sync: false
       - key: NEAR_MINTER_ACCOUNT
         sync: false
       - key: EXPECTED_NFT_CODE_HASH

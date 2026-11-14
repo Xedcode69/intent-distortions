@@ -2,6 +2,11 @@
 import base58
 from .near_rpc import NearRPC
 
+async def validate_source_rpc(settings,rpc=None):
+    rpc=rpc or NearRPC(settings.near_mainnet_rpc_url)
+    if (await rpc.call("status",{}))["chain_id"]!="mainnet":raise ValueError("Source block RPC must be mainnet")
+    return {"source_network":"mainnet"}
+
 async def validate_contracts(settings,rpc=None):
     rpc=rpc or NearRPC(settings.near_rpc_url)
     status=await rpc.call("status",{})

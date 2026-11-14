@@ -100,7 +100,8 @@ async def test_live_worker_persists_actual_page_counts_and_successful_interval_c
     from test_dataset import raw
     s=settings();s.data_dir=tmp_path
     class Collector:
-        async def collect(self,start,end,page_size,on_page):
+        async def collect(self,start,end,page_size,on_page,statuses):
+            assert statuses==("SUCCESS",)
             records=[raw(1,start+1),raw(2,start+2,status='FAILED')]
             on_page(records);return records,{'complete':True,'pages':1}
     class RPC:

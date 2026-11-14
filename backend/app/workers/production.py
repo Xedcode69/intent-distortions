@@ -19,8 +19,9 @@ from ..services.art_seed import GENESIS_HASH
 from ..services.epoch_manager import run_epoch
 from ..services.publication import publish,index_receipt
 from ..services.chain_writer import ChainWriter
+from ..services.chain_writer import OutcomeUnknown
 from ..services.ingestion import persist_page
-from ..services.preflight import validate_contracts
+from ..services.preflight import validate_contracts,validate_source_rpc
 
 log=logging.getLogger("echoes.worker")
 WEEK=604800
@@ -40,6 +41,28 @@ class Worker:
         self.rpc=rpc or NearRPC(settings.near_mainnet_rpc_url)
         self.fetch_beacon=beacon_fetch
         self.writer=ChainWriter(factory,settings)
+
+    async def collect(self,*args,**kwargs):
+        """Keep settlement/refunds moving during a long Explorer capture.
+
+        Only the collector runs concurrently. All signing stays serialized in
+        this leased worker; ambiguous signed outcomes stop this pass entirely.
+        """
+        task=asyncio.create_task(self.collector.collect(*args,**kwargs,statuses=("SUCCESS",)))
+        try:
+            while True:
+                done,_=await asyncio.wait({task},timeout=self.settings.worker_poll_seconds)
+                if done:return task.result()
+                if self.settings.enable_chain_writes:
+                    try:
+                        await self.writer.reconcile_pending()
+                        await self.monitor()
+                    except OutcomeUnknown:raise
+                    except Exception as exc:log.error("maintenance_delayed error_type=%s",type(exc).__name__)
+        finally:
+            if not task.done():
+                task.cancel()
+                await asyncio.gather(task,return_exceptions=True)
 
     def release(self,number):
         with self.factory.begin() as db:
@@ -83,7 +106,7 @@ class Worker:
             def on_page(page):
                 persist_page(self.factory,page)
                 progress.page(len(page))
-            raw,evidence=await asyncio.wait_for(self.collector.collect(start,end,self.settings.collector_page_size,on_page=on_page),max(1,r.freeze_at-int(self.clock())))
+            raw,evidence=await asyncio.wait_for(self.collect(start,end,self.settings.collector_page_size,on_page=on_page),max(1,r.freeze_at-int(self.clock())))
             completed=int(self.clock())
             if completed>r.freeze_at:
                 self.state(number,"delayed","ObservationCompletedAfterFreeze");return
@@ -114,12 +137,14 @@ class Worker:
 
     async def tick(self):
         if self.settings.enable_chain_writes:await self.writer.reconcile_pending()
+        await self.monitor()
         now=int(self.clock())
         latest=max(1,(now-self.policy["first_sunday"])//WEEK+1)
         for n in range(1,latest+1):
             r=self.release(n)
             if r.state=="settled":continue
             try:await self.advance(n)
+            except OutcomeUnknown:raise
             except Exception as exc:
                 self.state(n,"delayed",type(exc).__name__)
                 log.error("release_delayed epoch=%s error_type=%s",n,type(exc).__name__)
@@ -140,7 +165,7 @@ class Worker:
             if job is None:job=Job(key="live-index",kind="index_intents",status="running",attempts=0,payload={});db.add(job)
             job.status="running";job.attempts+=1;job.updated_at=now;job.error=None
         try:
-            records,evidence=await self.collector.collect(start,now,self.settings.collector_page_size,on_page=lambda page:persist_page(self.factory,page))
+            records,evidence=await self.collect(start,now,self.settings.collector_page_size,on_page=lambda page:persist_page(self.factory,page))
             with self.factory.begin() as db:
                 job=db.get(Job,"live-index");job.status="succeeded";job.updated_at=int(self.clock());job.payload={"start":start,"end":now,"count":len(records),"evidence":evidence}
         except Exception as exc:
@@ -158,10 +183,12 @@ class Worker:
         with self.factory() as db:arts=[a.payload for a in db.scalars(select(Artwork)) if a.payload["mode"]=="live" and a.payload["nft"]["status"]=="minted"]
         for art in arts:
             token=art["edition"];a=await rpc.view(self.settings.near_auction_contract,"get_auction",{"token_id":token})
-            if a and a["status"]=="Active" and now_ns>=int(a["end_ns"]):
+            # EconomyKeeper owns v3 settlement/recovery. Do not issue a second
+            # mutation under a different idempotency key in this same pass.
+            if not self.settings.economy_enabled and a and a["status"]=="Active" and now_ns>=int(a["end_ns"]):
                 receipt=await self.writer.submit(f'{art["id"]}:settle',self.settings.near_auction_contract,"finalize_auction",{"token_id":token})
                 await index_receipt(self.factory,receipt,self.settings.near_auction_contract,token,rpc)
-            elif a and a["status"] in ("SettlementPending","RecoveryRequired"):
+            elif not self.settings.economy_enabled and a and a["status"] in ("SettlementPending","RecoveryRequired"):
                 receipt=await self.writer.submit(f'{art["id"]}:reconcile:{int(self.clock())//900}',self.settings.near_auction_contract,"reconcile_settlement",{"token_id":token})
                 await index_receipt(self.factory,receipt,self.settings.near_auction_contract,token,rpc)
                 recovered=await rpc.view(self.settings.near_auction_contract,"get_auction",{"token_id":token})
@@ -189,6 +216,7 @@ async def main():
         lease.commit()
         worker=Worker(factory,settings)
         await validate_contracts(settings)
+        await validate_source_rpc(settings,worker.rpc)
         while True:
             if not lease.scalar(text("SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype='advisory' AND pid=pg_backend_pid() AND classid=0 AND objid=771862023 AND granted)")):
                 raise SystemExit("Worker no longer owns the database lease")

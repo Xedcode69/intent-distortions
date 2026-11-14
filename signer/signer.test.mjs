@@ -36,6 +36,9 @@ test("SDK-encoded transaction verifies against the signing key and enforces scop
     await assert.rejects(execute({...payment,method:"buy"},marketEnv),/allowlist/);
     await assert.rejects(execute({...payment,method:"withdraw_credit"},marketEnv),/allowlist/);
     await assert.rejects(execute({...request,deposit:"100000000000000000000001"},env),/limits/);
+    assert.ok((await execute({...request,method:"mint_scheduled_artwork",deposit:"1000000000000000000000000"},env)).transaction_hash);
+    await assert.rejects(execute({...request,method:"mint_scheduled_artwork",deposit:"1000000000000000000000001"},env),/limits/);
+    await assert.rejects(execute({...request,receiver_id:"auction.testnet",method:"create_auction",deposit:"1000000000000000000000000"},env),/limits/);
     await assert.rejects(execute(request,{...env,ENABLE_CHAIN_WRITES:"false"}),/disabled/);
     await assert.rejects(execute(request,{...env,NEAR_NETWORK:"mainnet"}),/not approved/);
     await assert.rejects(execute({...request,account_id:"other.testnet"},env),/mismatch/);

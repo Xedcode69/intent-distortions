@@ -56,7 +56,10 @@ async def publish(factory,settings,artwork,writer=None,rpc=None):
             method="mint_scheduled_artwork";args={"release_ns":str(int(release.timestamp())*10**9),"metadata":metadata,"commitment":expected}
         else:
             method="mint_weekly_artwork";args={"receiver_id":settings.near_auction_contract,"metadata":metadata,"commitment":expected}
-        receipt=await writer.submit(f'{artwork["id"]}:mint',settings.near_nft_contract,method,args,"100000000000000000000000")
+        # Expanded frozen traits may exceed a 0.1 NEAR metadata deposit. Match
+        # the rehearsed mint's 1 NEAR cap; the NFT refunds measured surplus.
+        deposit="1000000000000000000000000" if economy else "100000000000000000000000"
+        receipt=await writer.submit(f'{artwork["id"]}:mint',settings.near_nft_contract,method,args,deposit)
         await index_receipt(factory,receipt,settings.near_nft_contract,token,rpc)
     elif existing!=token:raise ValueError("Onchain epoch conflicts with canonical token")
     commitment=await rpc.view(settings.near_nft_contract,"get_provenance",{"token_id":token})

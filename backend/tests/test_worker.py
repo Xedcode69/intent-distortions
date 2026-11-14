@@ -29,7 +29,8 @@ async def test_worker_observes_before_freeze_reuses_inputs_and_waits_for_signer(
             return {"height":42,"hash":"11111111111111111111111111111111","timestamp_ns":str(target*10**9+200000000),"verified":True}
         async def verify_selected_block(self,block,target):assert int(block["timestamp_ns"])==target*10**9+200000000;return True
     class Collector:
-        async def collect(self,start,end,page_size,on_page):
+        async def collect(self,start,end,page_size,on_page,statuses):
+            assert statuses==("SUCCESS",)
             rows=[raw(i,start+100+i) for i in range(5)];on_page(rows)
             return rows,{"complete":True,"pages":1,"query":{"start":start,"end":end}}
     async def fetch(timestamp):assert timestamp==beacon["released_at"];return beacon
